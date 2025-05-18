@@ -132,6 +132,8 @@ reduced_cor_df$Var1 <- factor(reduced_cor_df$Var1,
 reduced_cor_df$Var2 <- factor(reduced_cor_df$Var2, 
                             levels = c(paste0("PC", 4:1), "lat"))
 
+if(!dir.exists("plots")) dir.create("plots")
+
 # Figure 3
 pdf(file.path("plots", "pc_cov_cor_reduced.pdf"), 18.4, 4)
 ggplot(reduced_cor_df) + 

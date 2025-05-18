@@ -6,9 +6,11 @@ This is the code and data repository which supplements the paper titled above.
 
 - gather seedtabs from HB
 - confirm seedtabs are correct
+- keep in mind GitHub doesn't track empty folders, so may need to call `dir.create` at some times
 - clean up code
   - simulation
-    - GitHub doesn't track empty folders, so need to go back and call `dir.create`
+      - or just put README files in those folders
+      - ask Justin if I can put the paper data on GitHub
     - `results.R`
     - replace all references `res` to the simulation data with `simdata`
     - replace all references `ints` to the intercepts with `clust2_intercepts`

@@ -1,4 +1,3 @@
-library(myUtils)
 library(magrittr)
 library(ggplot2)
 library(dplyr)
@@ -9,18 +8,10 @@ library(tibble)
 library(ggpubr)
 library(corrplot)
 
-simdata_dir <- file.path("~", 
-                         "00_Cyto", 
-                         "data",
-                         "simdata", 
-                         "simdata_04_01")
+simdata_dir <- file.path("01_simulation", "simdata")
+cvres_files <- list.files(file.path("01_simulation", "results"), recursive = TRUE)
 
-plot_dir <- "plots"
-if(!dir.exists(plot_dir)) dir.create(plot_dir)
-
-cvres_files <- list.files("results", recursive = TRUE)
-
-datobj <- 
+# TODO: continue here
 
 ###################################
 

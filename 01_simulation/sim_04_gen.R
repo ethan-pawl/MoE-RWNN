@@ -115,6 +115,7 @@ clust2_intercepts <- lapply(1:length(pro_mu_list), function(i) {
 })
 
 aux_simdata_dir <- file.path("01_simulation", "aux_simdata")
+if(!dir.exists(aux_simdata_dir)) dir.create(aux_simdata_dir)
 
 # Save for later (analysis of model results)
 names(clust2_intercepts) <- c("linear", "inter_mu", "quad_mu", "sig_mu")
@@ -194,6 +195,7 @@ make_data_fname <- function(imean, iprob, iint, irep) {
 }
 
 simdata_dir <- file.path("01_simulation", "simdata")
+if(!dir.exists(simdata_dir)) dir.create(simdata_dir)
 
 times <- rownames(X_pc)
 

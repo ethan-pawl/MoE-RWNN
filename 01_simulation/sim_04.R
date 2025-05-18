@@ -36,6 +36,7 @@ make_seedtab <- function(imean, iprob, iint, modelFit) {
     nrows <- nalpha * nbeta * (nfold + 1) * nrep
 
     seed_destin <- file.path("01_simulation", "seedtabs")
+    if(!dir.exists(seed_destin)) dir.create(seed_destin)
 
     seedfile <- file.path(seed_destin,
                           paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_seedtab.csv"))
