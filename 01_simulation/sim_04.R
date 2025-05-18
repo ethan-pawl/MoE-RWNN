@@ -3,32 +3,39 @@ library(parallel)
 library(parallelly)
 library(dplyr)
 
+# To prevent multi-threaded BLAS which conflicts with mclapply
 RhpcBLASctl::blas_set_num_threads(1)
 
+# Input SLURM array index
 args <- commandArgs(trailingOnly = TRUE)
 i <- as.integer(args[1])
 
 #################
 
+# Make a table to map the SLURM array index to a simulation scenario 
 sims <- rbind(expand.grid(1, 1:4, 1:10, c("l", "n"), stringsAsFactors = FALSE), 
               expand.grid(2:4, 1, 1:10, c("l", "n"), stringsAsFactors = FALSE))              
 colnames(sims) <- c("imean", "iprob", "iint", "modelFit")
 
 ############################
 
+# For each simulation scenario, make a table 
+# where each row is a seed to randomly initialize 
+# cluster means in the EM algorithm at each point in
+#  the cross-validation procedure (for reproducibility).
+
+#  If you want to reproduce our results, don't run this function. Instead, 
+# use the given seedtabs in the GitHub repository.
 make_seedtab <- function(imean, iprob, iint, modelFit) {
     RNGkind("L'Ecuyer-CMRG")
+    # 10 x 10 5-fold cross-validation with 30 EM restarts
     nalpha <- 10
     nbeta <- 10
     nfold <- 5
     nrep <- 30
     nrows <- nalpha * nbeta * (nfold + 1) * nrep
 
-    seed_destin <- "seedtabs"
-
-    if(!dir.exists(seed_destin)) {
-        dir.create(seed_destin, recursive = TRUE)
-    }
+    seed_destin <- file.path("01_simulation", "seedtabs")
 
     seedfile <- file.path(seed_destin,
                           paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_seedtab.csv"))
@@ -54,18 +61,22 @@ make_seedtab <- function(imean, iprob, iint, modelFit) {
         write.csv(seedtab, file = seedfile, row.names = FALSE)
         print(paste0("Wrote table containing seeds to", seedfile))
     }
-    RNGkind("default")
+    RNGkind("default") # Reset the RNG
 }
 
+# Returns TRUE if the model has already been fit to the 
+# i-th simulation scenario 
 sim_done <- function(i, sims) {
+    # Simulation scenario settings
     imean <- sims[i, "imean"]
     iprob <- sims[i, "iprob"]
     iint <- sims[i, "iint"]
     modelFit <- sims[i, "modelFit"]
 
-    fname <- file.path("results", 
-                        paste0(imean, "-", iprob, "-", iint, "-", modelFit),
-                        paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_summary.RDS"))
+    fname <- file.path("01_simulation",
+                       "results", 
+                       paste0(imean, "-", iprob, "-", iint, "-", modelFit),
+                       paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_summary.RDS"))
     
     
     is_done <- file.exists(fname)
@@ -76,51 +87,61 @@ sim_done <- function(i, sims) {
     return(is_done)
 }
 
-run_sim <- function(i, sims) {
+# If you want to reproduce our results, set new_seedtab = FALSE.
+# If you want to run on a new dataset or have some other reason 
+# for wanting new results, set new_seedtab = TRUE
+run_sim <- function(i, sims, new_seedtab = FALSE) {
+    # Simulation scenario settings
     imean <- sims[i, "imean"]
     iprob <- sims[i, "iprob"]
     iint <- sims[i, "iint"]
     modelFit <- sims[i, "modelFit"]
 
-    make_seedtab(imean, iprob, iint, modelFit)
+    if(new_seedtab) {
+        make_seedtab(imean, iprob, iint, modelFit)
+    }
 
     cat("Running simulation ", imean, "-", iprob, "-", iint, "-", modelFit, "\n", sep = "")
 
-    load(file.path("~", 
-                   "00_Cyto", 
-                   "data", 
+    load(file.path("01_simulation", 
                    "simdata", 
-                   "simdata_04_01",
                    paste0("simdata-", imean, "-", iprob, "-", iint, "-", "1", ".Rdata")))
 
-    ylist <- res$ybin_list
-    countslist <- res$countslist
-    maxdev <- diff(range(res$mean_spec)) / 2
+    # Data
+    ylist <- simdata$ybin_list
+    countslist <- simdata$countslist
 
+    # Estimation settings
+    maxdev <- diff(range(simdata$mean_spec)) / 2
     numclust <- 2
+
+    # K-fold cross-validation settings
     nfold <- 5 
-    nrep <- 30
     cv_gridsize <- 10
     blocksize <- 20
-    seedtab <- read.csv(file.path("seedtabs",
+
+    # Number of EM restarts
+    nrep <- 30
+
+    seedtab <- read.csv(file.path("01_simulation", 
+                                  "seedtabs",
                                   paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_seedtab.csv")))
 
-    destin <- file.path("results", 
+    destin <- file.path("01_simulation",
+                        "results", 
                         paste0(imean, "-", iprob, "-", iint, "-", modelFit))
 
     if(!dir.exists(destin)) {
         dir.create(destin, recursive = TRUE)
     }
 
-    load(file.path("~", 
-                   "00_Cyto", 
-                   "data",
-                   "X_data", 
-                    switch(modelFit, 
-                           l = "X_pc.Rdata", 
-                           n = "X_nl_70.Rdata")))
     # either way, loads in an object named X
+    load(file.path("data",
+                   switch(modelFit, 
+                          l = "X_pc.Rdata", 
+                          n = "X_nl.Rdata")))
 
+    # Define the cross-validation hyperparameter grid
     max_prob_lambda <- 24
     max_mean_lambda <- 24
 
@@ -142,8 +163,10 @@ run_sim <- function(i, sims) {
     save(prob_lambdas, file = file.path(destin, "prob_lambdas.Rdata"))
     save(mean_lambdas, file = file.path(destin, "mean_lambdas.Rdata"))
 
+    # Define cross-validation folds
     folds <- make_cv_folds(ylist, nfold, blocksize)
     
+    # Perform k-fold cross-validation
     cv.flowmix(ylist, 
                countslist, 
                X, 
@@ -163,6 +186,7 @@ run_sim <- function(i, sims) {
                folds, 
                seedtab)
 
+    # Refit model on entire dataset
     cv.flowmix(ylist, 
                countslist, 
                X, 
@@ -182,11 +206,13 @@ run_sim <- function(i, sims) {
                folds, 
                seedtab)
 
+    # Summarize k-fold cross-validation and refitting results
     cv_summary(destin = destin, 
                save = TRUE, 
                filename = paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_summary.RDS"))
 }
 
+# Call run_sim(i, sims, TRUE) if you don't want to reproduce our results 
 if(!sim_done(i, sims)) {
     run_sim(i, sims)
 }

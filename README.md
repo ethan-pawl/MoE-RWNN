@@ -7,5 +7,11 @@ This is the code and data repository which supplements the paper titled above.
 - gather seedtabs from HB
 - confirm seedtabs are correct
 - clean up code
+  - simulation
+    - `results.R`
+    - replace all references `res` to the simulation data with `simdata`
+    - replace all references `ints` to the intercepts with `clust2_intercepts`
+    - get seedtabs from HB, confirm that they match
+  - application
 - rename half to nl
 - add code where I create the nested CV folds

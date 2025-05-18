@@ -1,0 +1,5 @@
+data/*
+plots/*
+01_simulation/simdata
+01_simulation/aux_simdata
+01_simulation/results
