@@ -1,5 +1,11 @@
-data/*
+data/*.Rdata
 plots/*
-01_simulation/simdata
-01_simulation/aux_simdata
-01_simulation/results
+1_simulation/simdata
+1_simulation/aux_simdata
+1_simulation/job_tracking
+1_simulation/results
+2_application/21_all_data/job_tracking
+2_application/21_all_data/results 
+2_application/20_nested_cv/folds
+2_application/20_nested_cv/job_tracking
+2_application/20_nested_cv/results

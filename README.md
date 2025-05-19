@@ -4,15 +4,4 @@ This is the code and data repository which supplements the paper titled above.
 
 ## TODO
 
-- clean up code
-  - application
-    - nested_cv
-      - all
-- keep in mind GitHub doesn't track empty folders, so may need to call `dir.create` at some times
-  - or just put README files in those folders
-  - ask Justin if I can put the paper data file on GitHub
-- rename half to nl
 - test code
-  - simulation
-- confirm seedtabs are correct (get from HB)
-  - simulation
