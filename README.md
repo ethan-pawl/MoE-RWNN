@@ -6,9 +6,6 @@ This is the code and data repository which supplements the paper titled above.
 
 - clean up code
   - application
-    - all_data
-      - pcr.R
-      - cv_results.R
     - nested_cv
       - all
 - keep in mind GitHub doesn't track empty folders, so may need to call `dir.create` at some times

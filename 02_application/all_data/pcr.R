@@ -38,7 +38,6 @@ max_prob_lambda <- 2
 # The one_job function expects the data point indices 
 # from the original data set (not subsetted, like we are doing here), 
 # so we need to use the rownames to store the original indices.
-rownames(X_pc) <- 1:nrow(X_pc) 
 names(ylist) <- 1:length(ylist)
 names(countslist) <- 1:length(countslist)
 
@@ -51,28 +50,30 @@ jobs$model <- models
 if(cv_step == "maxres") {
   model <- models[arraynum]
 
-  destin <- paste0(proj_name, "_", model)
-  if(!dir.exists(destin)) {
-    dir.create(destin)
-  }
+  # TODO: check this
+  destin <- file.path("02_application", 
+                      "all_data", 
+                      "results", 
+                       model)
+                      
+  if(!dir.exists(destin)) dir.create(destin, recursive = TRUE)
 
-  maxres_file <- paste0(proj_name, "_maxres_", model,
-                        ".Rdata")
+  # Either way, loads in an object called X
+  load(file.path("data", 
+                 switch(model, 
+                        linear = "X_pc.Rdata", 
+                        nl = "X_nl.Rdata")))
 
-  # TODO: continue here
-
-  if(model == "nl") {
-    set.seed(0)
-    use_X <- X_hidden(X_pc, d, n.h, 0.5)
-  } else {
-    use_X <- X_pc
-  }
+  # The one_job function expects the data point indices 
+  # from the original data set (not subsetted, like we are doing here), 
+  # so we need to use the rownames to store the original indices.
+  rownames(X_pc) <- 1:nrow(X_pc) 
 
   maxres <- get_max_lambda(destin,
-                          maxres_file = maxres_file,
+                          maxres_file = "maxres.Rdata",
                           ylist = ylist,
                           countslist = countslist,
-                          X = use_X,
+                          X = X,
                           numclust = numclust,
                           maxdev = maxdev,
                           max_mean_lambda = max_mean_lambda,
@@ -93,23 +94,24 @@ if(cv_step == "maxres") {
 
   folds <- make_cv_folds(ylist, nfold, blocksize)
 
-  orig_X <- X_pc # this ensures proper naming of "X" in the meta file, 
-              #   without overwriting original X 
-
   for(j in -1:0 + 2 * arraynum) { # 1-5000 SLURM array --> 1-10000 job_grid rows
     job <- job_grid[j,]
-    destin <- paste0(proj_name, "_", job$model)
+
+    # Either way, loads in an object called X
+    load(file.path("data", 
+                   switch(job$model, 
+                          linear = "X_pc.Rdata", 
+                          nl = "X_nl.Rdata")))
+
+    destin <- file.path("02_application", 
+                        "all_data", 
+                        "results", 
+                         job$model)
+
     load(file.path(destin, "prob_lambdas.RData"))
     load(file.path(destin, "mean_lambdas.RData"))
 
-    if(job$model == "half") {
-      set.seed(0)
-      X <- X_hidden(orig_X, d, n.h, 0.5)
-    } else {
-      X <- orig_X
-    }
-
-    seedfile <- paste0(proj_name, "_seedtab_", job$model, ".csv")
+    seedfile <- file.path("02_application", "all_data", "seedtabs", paste0(proj_name, "_seedtab_", job$model, ".csv"))
     seedtab <- read.csv(seedfile)
 
     # save meta file
@@ -145,18 +147,21 @@ if(cv_step == "maxres") {
   job_grid <- expand.grid(jobs)
   job <- job_grid[arraynum,]
 
-  destin <- paste0(proj_name, "_", job$model)
+  destin <- file.path("02_application", 
+                      "all_data", 
+                      "results", 
+                      job$model)
+
   load(file.path(destin, "prob_lambdas.RData"))
   load(file.path(destin, "mean_lambdas.RData"))
 
-  if(job$model == "half") {
-    set.seed(0)
-    use_X <- X_hidden(X_pc, d, n.h, 0.5)
-  } else {
-    use_X <- X_pc
-  }
+  # Either way, loads in an object called X
+  load(file.path("data", 
+                 switch(job$model, 
+                        linear = "X_pc.Rdata", 
+                        nl = "X_nl.Rdata")))
 
-  seedfile <- paste0(proj_name, "_seedtab_", job$model, ".csv")
+  seedfile <- file.path("02_application", "all_data", "seedtabs", paste0(proj_name, "_seedtab_", job$model, ".csv"))
   seedtab <- read.csv(seedfile)
 
   one_job_refit(job$ialpha,
@@ -170,11 +175,14 @@ if(cv_step == "maxres") {
                 seedtab = seedtab, 
                 ylist = ylist, 
                 countslist = countslist, 
-                X = use_X)
+                X = X)
 } else if(cv_step == "summary") {
   model <- models[arraynum]
 
-  destin <- paste0(proj_name, "_", model)
+  destin <- file.path("02_application", 
+                      "all_data", 
+                      "results", 
+                      model)
   
   cv_summary(destin = destin,
              save = TRUE,
