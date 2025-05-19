@@ -3,6 +3,9 @@
 # Example of a SLURM script which can be 
 # used to run the application
 
+# The file path separators may need to be adjusted if you're not using a 
+# Unix-like operating system. (For example, replace with a \)
+
 # You will need to specify more SBATCH directives
 # to run on your HPC instance
 
@@ -30,4 +33,4 @@ failure_dir="2_application/20_nested_cv/job_tracking/${cv_step}/failures"
 mkdir -p "${success_dir}"
 mkdir -p "${failure_dir}"
 
-Rscript pcr_oos.R $cv_step $SLURM_ARRAY_TASK_ID && echo "success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt
+Rscript 2_application/20_nested_cv/pcr_oos.R $cv_step $SLURM_ARRAY_TASK_ID && echo "success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt

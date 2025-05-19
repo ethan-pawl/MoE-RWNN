@@ -3,6 +3,9 @@
 # Example of a SLURM script which can be 
 # used to run the simulations
 
+# The file path separators may need to be adjusted if you're not using a 
+# Unix-like operating system. (For example, replace with a \)
+
 # You will need to specify more SBATCH directives
 # to run on your HPC instance
 
@@ -33,4 +36,4 @@ mkdir -p "${failure_dir}"
 
 # Loop through all simulation scenarios while keeping track of 
 # which jobs fail and which run successfully
-Rscript sim_04.R $SLURM_ARRAY_TASK_ID && echo "success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt
+Rscript 1_simulation/sim_04.R $SLURM_ARRAY_TASK_ID && echo "success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt

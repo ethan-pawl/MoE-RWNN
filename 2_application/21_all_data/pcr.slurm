@@ -3,6 +3,9 @@
 # Example of a SLURM script which can be 
 # used to run the application
 
+# The file path separators may need to be adjusted if you're not using a 
+# Unix-like operating system. (For example, replace with a \)
+
 # You will need to specify more SBATCH directives
 # to run on your HPC instance
 
@@ -31,4 +34,4 @@ mkdir -p "${success_dir}"
 mkdir -p "${failure_dir}"
 
 # Loop through all cross-validation jobs and save success/fail state
-Rscript pcr.R $cv_step $SLURM_ARRAY_TASK_ID && echo "Job $cv_step $SLURM_ARRAY_TASK_ID was a success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "Job $cv_step $SLURM_ARRAY_TASK_ID was a failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt
+Rscript 2_application/21_all_data/pcr.R $cv_step $SLURM_ARRAY_TASK_ID && echo "Job $cv_step $SLURM_ARRAY_TASK_ID was a success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "Job $cv_step $SLURM_ARRAY_TASK_ID was a failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt
