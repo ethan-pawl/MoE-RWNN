@@ -16,11 +16,21 @@
 #SBATCH --array=1-140
 #SBATCH --job-name=simulation
 
+###
+
 # Load necessary modules
 
-mkdir successes
-mkdir failures
+###
+
+# Create some directories to keep track of which jobs fail
+# and which run successfully
+# Feel free to adjust file paths as per your convenience
+success_dir="01_simulation/job_tracking/${cv_step}/successes"
+failure_dir="01_simulation/job_tracking/${cv_step}/failures"
+
+mkdir -p "${success_dir}"
+mkdir -p "${failure_dir}"
 
 # Loop through all simulation scenarios while keeping track of 
 # which jobs fail and which run successfully
-Rscript sim_04.R $SLURM_ARRAY_TASK_ID && echo "success" > successes/${SLURM_ARRAY_TASK_ID}.txt || echo "failure" > failures/${SLURM_ARRAY_TASK_ID}.txt
+Rscript sim_04.R $SLURM_ARRAY_TASK_ID && echo "success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt

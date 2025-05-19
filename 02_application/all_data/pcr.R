@@ -1,4 +1,3 @@
-# Requires MGL1704-hourly-paper.RDS in the project data folder
 # IMPORTANT: this also requires my fork of flowmix (ethan-pawl/flowmix,
 # branch summary_no_meta)
 
@@ -14,7 +13,7 @@ arraynum <- as.integer(args[2])
 stopifnot(cv_step %in% c("maxres", "cv", "refit", "summary"))
 
 # Load the data
-datobj <- readRDS(file = "../../data/paper-data-v2/MGL1704-hourly-paper.RDS")
+datobj <- readRDS(file = file.path("data", "MGL1704-hourly-paper.RDS"))
 datobj %>% list2env(envir = .GlobalEnv) %>% invisible()
 
 p <- ncol(X)
@@ -22,47 +21,19 @@ p <- ncol(X)
 # Estimation settings
 n.h <- 70
 numclust <- 10
+maxdev <- 0.5
 
 # Cross-validation settings
 cv_gridsize <- 10
 nfold <- 5
 blocksize <- 20
 nrep <- 10
-maxdev <- 0.5
 max_mean_lambda <- 40
 max_prob_lambda <- 2 
 
-# ELM transformation functions
-
-make_W_unif <- function(p, n.h, a) {
-    return(matrix(runif((p + 1) * n.h, - a, a), nrow = p + 1))
-}
-
-activate <- function(V) {
-    return(1 / (1 + exp(-V)))
-}
-
-X_hidden <- function(X, p, n.h, a) {
-  W <- make_W_unif(p, n.h, a)
-  return(activate(cbind(1, X) %*% W))
-}
-
-###############################
-
-#  Project X into the principal components space
-X_no_cp <- X[,3:ncol(X)]
-
-# X has already been centered and scaled
-X_pca <- prcomp(X_no_cp, center = FALSE, scale = FALSE)
-pca_var <- X_pca$sdev**2
-cpve <- cumsum(pca_var / sum(pca_var)) 
-
-d <- which(cpve > 0.95)[1]
-# The first d principal components explain most of the variation
-
-X_pc <- X_no_cp %*% X_pca$rotation[,1:d]
-
 ##################################
+
+# Model Cross-Validation
 
 # The one_job function expects the data point indices 
 # from the original data set (not subsetted, like we are doing here), 
@@ -73,7 +44,7 @@ names(countslist) <- 1:length(countslist)
 
 jobs <- list()
 
-models <- c("linear", "half")
+models <- c("linear", "nl")
 jobs$model <- models
 
 # Perform the selected cross-validation step
@@ -88,7 +59,9 @@ if(cv_step == "maxres") {
   maxres_file <- paste0(proj_name, "_maxres_", model,
                         ".Rdata")
 
-  if(model == "half") {
+  # TODO: continue here
+
+  if(model == "nl") {
     set.seed(0)
     use_X <- X_hidden(X_pc, d, n.h, 0.5)
   } else {

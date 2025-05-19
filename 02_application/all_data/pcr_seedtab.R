@@ -5,7 +5,7 @@ library(tibble)
 library(dplyr)
 RNGkind("L'Ecuyer-CMRG")
 
-# CV settings
+# Cross-validation settings
 nalpha <- 10
 nbeta <- 10
 nfold <- 5
@@ -18,8 +18,11 @@ nrows <- nalpha * nbeta * (nfold + 1) * nrep
 ## Form destination folder
 ## and make file names for saving the seeds
 ## Form destination folder
-for(model in c("linear", "half")) {
-    seedfile <- paste0(proj_name, "_seedtab_", model, ".csv")
+
+# DON'T run the next for loop if you want to reproduce our results,
+# because it will overwrite the preexisting seedtabs
+for(model in c("linear", "nl")) {
+    seedfile <- file.path("seedtabs", paste0(proj_name, "_seedtab_", model, ".csv"))
 
     ## Make sure the seeds have not already been generated.
     if(file.exists(seedfile)) {
