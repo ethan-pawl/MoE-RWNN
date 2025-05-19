@@ -1,8 +1,7 @@
 proj_name <- "pcr_oos"
 
 library(flowmix) 
-library(tidyverse)
-library(conflicted)
+library(magrittr)
 
 # Load training data
 load(file.path("2_application", 

@@ -6,7 +6,6 @@ library(parallel)
 library(tibble)
 library(reshape2)
 library(gridExtra)
-library(gtools)
 library(grid)
 library(dplyr)
 library(tidyr)
@@ -408,8 +407,6 @@ positions <- data.frame(Population = rep(c("pro", "syn", "pico1", "pico2"), each
 
 #############
 
-# PAPER PLOTS
-
 # First, exploration. We want ICEs for every response, every population
 #    -PC1
 #     PC2, PC3, and PC4 for three different levels of PC1 (low, transition, high)
@@ -539,8 +536,6 @@ PC1_ice_list <- lapply(c("pro", "syn", "pico1", "pico2"), function(pop) {
   labs(title = paste(pop, resp))
   })
 }) %>% unlist(recursive = FALSE)
-
-# FRANCOIS PLOTS
 
 # PC1
 

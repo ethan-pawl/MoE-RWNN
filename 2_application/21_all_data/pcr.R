@@ -1,8 +1,7 @@
 proj_name <- "pcr"
 
 library(flowmix) 
-library(tidyverse)
-library(conflicted)
+library(magrittr)
 
 args <- commandArgs(trailingOnly = TRUE)
 cv_step <- args[1]
