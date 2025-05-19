@@ -7,11 +7,11 @@ This is the code and data repository which supplements the paper titled above.
 - gather seedtabs from HB
 - confirm seedtabs are correct
 - keep in mind GitHub doesn't track empty folders, so may need to call `dir.create` at some times
+  - or just put README files in those folders
+  - ask Justin if I can put the paper data file on GitHub
 - clean up code
   - simulation
     - test
-    - or just put README files in those folders
-    - ask Justin if I can put the paper data on GitHub
     - get seedtabs from HB, confirm that they match
   - application
 - rename half to nl
