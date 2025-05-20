@@ -50,4 +50,3 @@ Rscript 2_application/21_all_data/211_pcr_results.R
 ## TODO
 
 - test code
-- clean `211_pcr_results.R` more

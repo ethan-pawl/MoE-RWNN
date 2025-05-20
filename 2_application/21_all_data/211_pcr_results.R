@@ -131,6 +131,7 @@ graphics.off()
 
 # PC1
 
+# Figure 10
 lat_scaled <- (lat - min(lat)) / (max(lat) - min(lat)) * (10) - 1.5
 
 cov_pc_df <- cbind(X, X_pc)
@@ -146,6 +147,7 @@ head(cov_pc_df_long)
 pc1_covs <- c("sss", "sst", "PP", "Si", "NO3", "CHL", "PHYC", "PO4", "O2", "PC1")
 pc1_covs_lat <- c(pc1_covs, "lat")
 
+pdf(file.path("plots", "PC1_line.pdf"), 14, 7.9)
 ggplot(cov_pc_df_long[cov_pc_df_long$Variable %in% pc1_covs_lat,]) + 
   geom_path(data = cov_pc_df_long[cov_pc_df_long$Variable %in% pc1_covs,], 
           aes(time, Value, group = Variable, color = Variable, 
@@ -167,9 +169,11 @@ ggplot(cov_pc_df_long[cov_pc_df_long$Variable %in% pc1_covs_lat,]) +
             label = "1st Principal Component:\n\"negative latitude,\"\nlearned from\n environmental conditions", 
             fontface = "bold", size = 5) + 
   theme(text = element_text(size = 22), legend.key.size = unit(1, "cm"))
+graphics.off()
 
 ###### PC2
 
+# Figure 11
 pc2_covs <- c("Fe", "sla", "wind_stress", "wind_speed", "vgos", "vgosa", 
               "sdns", "northward_wind", "nitrate", "phosphate", "PC2")
 
@@ -184,14 +188,12 @@ ggplot(cov_pc_df_long[cov_pc_df_long$Variable %in% pc2_covs,]) +
   scale_linewidth_manual(values = c(rep(1, 10), 2)) + 
   geom_vline(xintercept = cov_pc_df$time[203], linetype = "dotdash", linewidth = 1) + 
   geom_vline(xintercept = cov_pc_df$time[221], linetype = "dotdash", linewidth = 1) + 
-  # annotate("text", x = cov_pc_df$time[140], y = -5.5, 
-  #           label = "1st Principal Component:\n\"negative latitude,\"\nlearned from\n environmental conditions", 
-  #           fontface = "bold", size = 5) + 
   theme(text = element_text(size = 22), legend.key.size = unit(1, "cm"))
 graphics.off()
 
 ###### PC3
 
+# Figure 12
 pc3_covs <- c("p1", "p2", "ugos", "ugosa", "PC3")
 
 pdf(file.path("plots", "PC3_line.pdf"), 14, 7.9)
@@ -205,14 +207,12 @@ ggplot(cov_pc_df_long[cov_pc_df_long$Variable %in% pc3_covs,]) +
   scale_linewidth_manual(values = c(rep(1, 4), 2)) + 
   geom_vline(xintercept = cov_pc_df$time[203], linetype = "dotdash", linewidth = 1) + 
   geom_vline(xintercept = cov_pc_df$time[221], linetype = "dotdash", linewidth = 1) + 
-  # annotate("text", x = cov_pc_df$time[140], y = -5.5, 
-  #           label = "1st Principal Component:\n\"negative latitude,\"\nlearned from\n environmental conditions", 
-  #           fontface = "bold", size = 5) + 
   theme(text = element_text(size = 22), legend.key.size = unit(1, "cm"))
 graphics.off()
 
 ###### PC4
 
+# Figure 13
 pc4_covs <- c("p3", "p4", "par", "PC4")
 
 pdf(file.path("plots", "PC4_line.pdf"), 14, 7.9)
@@ -226,190 +226,12 @@ ggplot(cov_pc_df_long[cov_pc_df_long$Variable %in% pc4_covs,]) +
   scale_linewidth_manual(values = c(rep(1, 3), 2)) + 
   geom_vline(xintercept = cov_pc_df$time[203], linetype = "dotdash", linewidth = 1) + 
   geom_vline(xintercept = cov_pc_df$time[221], linetype = "dotdash", linewidth = 1) + 
-  # annotate("text", x = cov_pc_df$time[140], y = -5.5, 
-  #           label = "1st Principal Component:\n\"negative latitude,\"\nlearned from\n environmental conditions", 
-  #           fontface = "bold", size = 5) + 
   theme(text = element_text(size = 22), legend.key.size = unit(1, "cm"))
 graphics.off()
 
 ################################
 
-# look at predictions at low latitude, transition zone, high latitude
-
-ice_X <- tcrossprod(rep(1, 30 * 3), colMeans(X_pc))
-PC2_seq <- seq(min(X_pc[,2]), max(X_pc[,2]), length.out = 30)
-ice_X[,2] <- rep(PC2_seq, times = 3)
-PC1_levels <- c(-4, 1, 6)
-ice_X[,1] <- rep(PC1_levels, each = 30)
-
-set.seed(0)
-ice_X_nl <- X_hidden(ice_X, 9, n.h, 0.5)
-
-lin_ice <- predict(linear_best, newx = ice_X, logits = FALSE)
-nl_ice <- predict(nl_best, newx = ice_X_nl, logits = FALSE)
-
-lin_diam <- lin_ice$mn[,1,c(10, 1, 5, 7)]
-nl_diam <- nl_ice$mn[,1,c(8, 3, 7, 5)]
-colnames(lin_diam) <- c("pro", "syn", "pico1", "pico2")
-colnames(nl_diam) <- c("pro", "syn", "pico1", "pico2")
-
-lin_diam <- as.data.frame(lin_diam)
-nl_diam <- as.data.frame(nl_diam)
-lin_diam$PC2 <- nl_diam$PC2 <- ice_X[,2]
-lin_diam$PC1 <- nl_diam$PC1 <- factor(ice_X[,1], levels = c(-4, 1, 6), labels = c("High Latitude", 
-                                                                                  "Transition Zone", 
-                                                                                  "Low Latitude"))
-
-lin_diam$Response <- nl_diam$Response <- "Log_Diam"
-
-lin_diam_melt <- melt(lin_diam, id.vars = c("PC1", "PC2", "Response"), 
-                                  variable.name = "Population", 
-                                  value.name = "Prediction")
-
-nl_diam_melt <- melt(nl_diam, id.vars = c("PC1", "PC2", "Response"), 
-                                  variable.name = "Population", 
-                                  value.name = "Prediction")
-
-lin_diam_melt$model <- "linear"
-nl_diam_melt$model <- "nonlinear"
-
-lin_chl <- lin_ice$mn[,2,c(10, 1, 5, 7)]
-nl_chl <- nl_ice$mn[,2,c(8, 3, 7, 5)]
-colnames(lin_chl) <- c("pro", "syn", "pico1", "pico2")
-colnames(nl_chl) <- c("pro", "syn", "pico1", "pico2")
-
-lin_chl <- as.data.frame(lin_chl)
-nl_chl <- as.data.frame(nl_chl)
-lin_chl$PC2 <- nl_chl$PC2 <- ice_X[,2]
-lin_chl$PC1 <- nl_chl$PC1 <- factor(ice_X[,1], levels = c(-4, 1, 6), labels = c("High Latitude", 
-                                                                                  "Transition Zone", 
-                                                                                  "Low Latitude"))
-
-lin_chl$Response <- nl_chl$Response <- "Log_chl"
-
-lin_chl_melt <- melt(lin_chl, id.vars = c("PC1", "PC2", "Response"), 
-                                  variable.name = "Population", 
-                                  value.name = "Prediction")
-
-nl_chl_melt <- melt(nl_chl, id.vars = c("PC1", "PC2", "Response"), 
-                                  variable.name = "Population", 
-                                  value.name = "Prediction")
-
-lin_chl_melt$model <- "linear"
-nl_chl_melt$model <- "nonlinear"
-
-lin_pe <- lin_ice$mn[,3,c(10, 1, 5, 7)]
-nl_pe <- nl_ice$mn[,3,c(8, 3, 7, 5)]
-colnames(lin_pe) <- c("pro", "syn", "pico1", "pico2")
-colnames(nl_pe) <- c("pro", "syn", "pico1", "pico2")
-
-lin_pe <- as.data.frame(lin_pe)
-nl_pe <- as.data.frame(nl_pe)
-lin_pe$PC2 <- nl_pe$PC2 <- ice_X[,2]
-lin_pe$PC1 <- nl_pe$PC1 <- factor(ice_X[,1], levels = c(-4, 1, 6), labels = c("High Latitude", 
-                                                                                  "Transition Zone", 
-                                                                                  "Low Latitude"))
-
-lin_pe$Response <- nl_pe$Response <- "Log_pe"
-
-lin_pe_melt <- melt(lin_pe, id.vars = c("PC1", "PC2", "Response"), 
-                                  variable.name = "Population", 
-                                  value.name = "Prediction")
-
-nl_pe_melt <- melt(nl_pe, id.vars = c("PC1", "PC2", "Response"), 
-                                  variable.name = "Population", 
-                                  value.name = "Prediction")
-
-lin_pe_melt$model <- "linear"
-nl_pe_melt$model <- "nonlinear"
-
-lin_prob <- lin_ice$prob[,c(10, 1, 5, 7)]
-nl_prob <- nl_ice$prob[,c(8, 3, 7, 5)]
-colnames(lin_prob) <- c("pro", "syn", "pico1", "pico2")
-colnames(nl_prob) <- c("pro", "syn", "pico1", "pico2")
-
-lin_prob <- as.data.frame(lin_prob)
-nl_prob <- as.data.frame(nl_prob)
-lin_prob$PC2 <- nl_prob$PC2 <- ice_X[,2]
-lin_prob$PC1 <- nl_prob$PC1 <- factor(ice_X[,1], levels = c(-4, 1, 6), labels = c("High Latitude", 
-                                                                                  "Transition Zone", 
-                                                                                  "Low Latitude"))
-
-lin_prob$Response <- nl_prob$Response <- "Relative_Abundance"
-
-lin_prob_melt <- melt(lin_prob, id.vars = c("PC1", "PC2", "Response"), 
-                                  variable.name = "Population", 
-                                  value.name = "Prediction")
-
-nl_prob_melt <- melt(nl_prob, id.vars = c("PC1", "PC2", "Response"), 
-                                  variable.name = "Population", 
-                                  value.name = "Prediction")
-
-lin_prob_melt$model <- "linear"
-nl_prob_melt$model <- "nonlinear"
-
-prob_melt <- rbind(lin_prob_melt, nl_prob_melt)
-
-pred_df <- rbind(lin_prob_melt, nl_prob_melt, lin_diam_melt, nl_diam_melt, lin_chl_melt, nl_chl_melt, lin_pe_melt, nl_pe_melt)
-pred_df$Response <- factor(pred_df$Response, levels = c("Relative_Abundance", 
-                                                        "Log_Diam", 
-                                                        "Log_chl", 
-                                                        "Log_pe"))
-
-ggplot(pred_df) + 
-  geom_line(aes(x = PC2, y = Prediction, linetype = model, color = PC1)) + 
-  facet_wrap(Population ~ Response, nrow = 4, scales = "free") + 
-  scale_linetype_manual(values = c("linear" = "dashed", "nonlinear" = "solid"))
- 
-diam_melt <- rbind(lin_diam_melt, nl_diam_melt)
-
-ggplot(diam_melt[diam_melt$Population == "pico1",]) + 
-  geom_line(aes(x = PC2, y = Relative_Abundance, linetype = model, color = PC1), linewidth = 1) + 
-  facet_wrap(~ Population) + 
-  theme(text = element_text(size = 22), legend.key.size = unit(1, "cm")) + 
-  ylab("")
-
-###### now vary PC1
-
-ice_X <- tcrossprod(rep(1, 30), colMeans(X_pc))
-ice_X[,1] <- PC1_seq <- seq(min(X_pc[,1]), max(X_pc[,1]), length.out = 30)
-
-set.seed(0)
-ice_X_nl <- X_hidden(ice_X, 9, n.h, 0.5)
-
-lin_ice <- predict(linear_best, newx = ice_X, logits = FALSE)
-nl_ice <- predict(nl_best, newx = ice_X_nl, logits = FALSE)
-
-lin_diam <- lin_ice$mn[,1,c(10, 1, 5, 7)]
-nl_diam <- nl_ice$mn[,1,c(8, 3, 7, 5)]
-colnames(lin_diam) <- c("pro", "syn", "pico1", "pico2")
-colnames(nl_diam) <- c("pro", "syn", "pico1", "pico2")
-lin_diam <- as.data.frame(lin_diam)
-nl_diam <- as.data.frame(nl_diam)
-lin_diam$PC1 <- nl_diam$PC1 <- PC1_seq
-
-lin_diam_melt <- melt(lin_diam, id.vars = "PC1", 
-                                  variable.name = "Population", 
-                                  value.name = "Log_Diameter")
-nl_diam_melt <- melt(nl_diam, id.vars = "PC1", 
-                                  variable.name = "Population", 
-                                  value.name = "Log_Diameter")
-
-lin_diam_melt$model <- "linear"
-nl_diam_melt$model <- "nonlinear"
-
-diam_melt <- rbind(lin_diam_melt, nl_diam_melt)
-
-positions <- data.frame(Population = rep(c("pro", "syn", "pico1", "pico2"), each = 2), 
-                        PC1 = rep(c(5, 0) - 1.75, times = 4), 
-                        Log_Diameter = c(rep(0.8, 2), rep(0.15, 2), rep(0.2, 2), 0.15, 0.125),
-                        label = rep(c("31.9°N", "34°N"), times = 4))
-
-#############
-
-# First, exploration. We want ICEs for every response, every population
-#    -PC1
-#     PC2, PC3, and PC4 for three different levels of PC1 (low, transition, high)
+# Individual Conditional Expectations 
 
 # Create fine grids of X values
 PC1_seq <- seq(min(X_pc[,1]), max(X_pc[,1]), length.out = 30)
@@ -516,9 +338,12 @@ PC1_plot <- ggplot(PC1_pred_melt) +
   facet_wrap(Population ~ Response, scales = "free") + 
   geom_vline(xintercept = -X_pc[203,1], linetype = "dotted") + 
   geom_vline(xintercept = -X_pc[221,1], linetype = "dotted") +
-  # annotate("text", x = -6, y = 5.7, label = "31.9°N", size = 8) +
-  # annotate("text", x = 1.25, y = 5.7, label = "34°N", size = 8) + 
   theme(text = element_text(size = 10))
+
+# Figure 8
+pdf(file.path("plots", "PC1_all.pdf"), 10, 8.5)
+PC1_plot
+graphics.off()
 
 # code to output a list of these plots
 PC1_ice_list <- lapply(c("pro", "syn", "pico1", "pico2"), function(pop) {
@@ -527,11 +352,8 @@ PC1_ice_list <- lapply(c("pro", "syn", "pico1", "pico2"), function(pop) {
   geom_line(aes(x = -PC1, y = Prediction, linetype = model, color = model), linewidth = 1) + 
   scale_linetype_manual(name = "Model", labels = c("Linear", "Nonlinear"), values = c("linear" = "dotdash", "nonlinear" = "solid")) + 
   scale_color_discrete(name = "Model", labels = c("Linear", "Nonlinear")) +
-  # facet_wrap(Population ~ Response, scales = "free") + 
   geom_vline(xintercept = -X_pc[203,1], linetype = "dotted") + 
   geom_vline(xintercept = -X_pc[221,1], linetype = "dotted") +
-  # annotate("text", x = -6, y = 5.7, label = "31.9°N", size = 8) +
-  # annotate("text", x = 1.25, y = 5.7, label = "34°N", size = 8) + 
   theme(text = element_text(size = 22)) + 
   labs(title = paste(pop, resp))
   })
@@ -539,7 +361,7 @@ PC1_ice_list <- lapply(c("pro", "syn", "pico1", "pico2"), function(pop) {
 
 # PC1
 
-# Figure 1
+# Figure 6
 pro2 <- PC1_ice_list[[4]] + 
   labs(title  = "Pro Phycoerythrin", x = "", y = "") +
   labs(y = "Prediction")
@@ -686,6 +508,11 @@ plot_ice <- function(PC_lin_ice, PC_nl_ice, PC_num, PC_seq, return_plot_list = F
 PC2_plot <- plot_ice(PC2_lin_ice, PC2_nl_ice, "PC2", PC2_seq)
 PC2_plist <- plot_ice(PC2_lin_ice, PC2_nl_ice, "PC2", PC2_seq, return_plot_list = TRUE)
 
+# Figure 9
+pdf(file.path("plots", "PC2_all.pdf"), 10, 8.5)
+PC2_plot
+graphics.off()
+
 # pro abundance
 PC2_1 <- PC2_plist[[1]] + 
   labs(title = "Pro Relative Abundance", y = "Prediction") + 
@@ -724,9 +551,84 @@ PC2_3 <- PC2_3 +
 
 PC2_xlab <- ggpubr::text_grob("PC2", hjust = 2.5, vjust = -0.5, size = 18)
 
+# Figure 7
 pdf(file.path("plots", "PC2_selected.pdf"), 21.3, 6.7)
 grid.arrange(PC2_1, PC2_2, PC2_3, PC2_leg, PC2_xlab, 
              layout_matrix = matrix(c(1, 2, 3, 4, 
                                        5, 5, 5, 5), nrow = 2, byrow = TRUE), 
              widths = c(1, 1, 1, 0.4), heights = c(1, 0.05))
 graphics.off()
+
+# Figures 14-17
+
+pop_mat <- matrix(c(10, 8, 
+                    1, 3, 
+                    5, 7,
+                    7, 5), ncol = 2, byrow = TRUE)
+
+models <- c("Linear", "Nonlinear")
+pops <- c("Pro", "Syn", "Pico1",
+          "Pico2")
+
+colnames(pop_mat) <- models
+rownames(pop_mat) <- pops
+
+# response vs time
+plot_1d_resp <- function(pop_mat, pop, resp) {
+  resp_dat <- switch(resp, 
+                      prob = "$prob[,", 
+                      diam = "$mn[,1,", 
+                      chl = "$mn[,2,", 
+                      pe = "$mn[,3,")
+  
+  clusts <- pop_mat[pop,]
+
+  lin_resp <- linear_best %>% 
+                substitute() %>% 
+                deparse() %>%
+                paste0(resp_dat, clusts["Linear"], "]") %>% 
+                str2lang() %>%
+                eval()
+  half_resp <- half_best %>% 
+                substitute() %>% 
+                deparse() %>%
+                paste0(resp_dat, clusts["Nonlinear"], "]") %>% 
+                str2lang() %>%
+                eval()
+  
+  lin_df <- data.frame(time = time, lin_resp, model = "Linear")
+  half_df <- data.frame(time = time, half_resp, model = "Nonlinear")
+  colnames(lin_df)[2] <- resp 
+  colnames(half_df)[2] <- resp 
+
+  resp_df <- rbind(lin_df, half_df)
+
+  plot_title <- paste0(pop, ": Linear-", clusts["Linear"], 
+                      ", Nonlinear-", clusts["Nonlinear"], ": ", resp)
+  ggplot(resp_df, aes(x = time, y = .data[[resp]], group = model, color = model)) + 
+    geom_line() + 
+    ggtitle(plot_title) + 
+    theme(axis.text.x = element_blank(), 
+          axis.ticks.x = element_blank(), 
+          axis.title = element_text(size = 16), 
+          legend.key.height = unit(1, 'cm'), 
+          legend.key.width = unit(1.5, "cm"), 
+          legend.text = element_text(size=16), 
+          legend.title = element_text(size=16), 
+          title = element_text(size = 16))
+}
+
+
+
+for(pop in pops) {
+  fname <- paste0("response_time_", pop, ".png")
+  fpath <- file.path("plots", fname)
+  p1 <- plot_1d_resp(pop_mat, pop, "prob")
+  p2 <- plot_1d_resp(pop_mat, pop, "diam")
+  p3 <- plot_1d_resp(pop_mat, pop, "chl")
+  p4 <- plot_1d_resp(pop_mat, pop, "pe")
+
+  pdf(fpath, 17, 9.6)
+  print(grid.arrange(p1, p2, p3, p4, nrow = 2))
+  graphics.off()
+}
