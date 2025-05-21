@@ -1,6 +1,6 @@
 # Mixtures of Neural Network Experts with an Application to Phytoplankton Flow Cytometry Data
 
-This is repository contains the necessary data and code to reproduce the results and figures in the article titled above. This method relies heavily upon the `flowmix` package developed by Sangwon Hyun and Jacob Bien (linked [here](https://github.com/sangwon-hyun/flowmix)).
+This is repository contains the necessary data and code to reproduce the results and figures in the article titled above. This method relies heavily upon the `flowmix` [package](https://github.com/sangwon-hyun/flowmix) developed by Sangwon Hyun and Jacob Bien.
 
 To reproduce the results in the paper on a high-performance computing (HPC) environment, go into the `.slurm` scripts and specify any `#SBATCH` directives you need in order to make the scripts work with your specific resources, install any required R libraries (listed below) then follow these steps: 
 
