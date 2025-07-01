@@ -33,6 +33,11 @@ X_prob_int <- cbind(1, X_prob)
 # Specify regression coefficients, then 
 # generate cluster means (mu) and probabilities (pi)
 
+# The regression coefficients corresponding to PC1 are a 
+# sign flip of the ones in the paper. We use PC1 to generate 
+# the data and for modeling, but we report results 
+# based on -PC1 for more intuitive interpretation.
+
 # Cluster 1 (Prochlorococcus proxy)
 
 # Linear in both

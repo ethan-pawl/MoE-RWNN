@@ -51,14 +51,7 @@ for(i in 1:5) { # For each outer fold (held-out test dataset)
                                      countslist[out_sample_folds[[i]]])
 }
 
+# These are the estimates of out-of-sample predictive performance (NLPLs) 
+# mentioned in the article
 mean(l_oos_nll)
 mean(nl_oos_nll)
-
-nll_df <- data.frame(NLL = c(l_oos_nll, nl_oos_nll), 
-                     Model = rep(c("Linear", "Nonlinear"), each = 5), 
-                     Heldout = rep(1:5, 2))
-
-write.csv(nll_df, file = file.path("2_application", 
-                                   "20_nested_cv", 
-                                   "results", 
-                                   "00_nll_df.csv"))

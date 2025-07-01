@@ -1,4 +1,3 @@
-library(magrittr)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
@@ -7,6 +6,8 @@ library(flowmix)
 library(tibble)
 library(ggpubr)
 library(RColorBrewer)
+library(ggtext)
+library(grid)
 
 # Collect results
 simdata_dir <- file.path("1_simulation", "simdata")
@@ -78,54 +79,6 @@ get_title <- function(cv, plot_type) {
 
     paste0(label, ": ", data_config, ", Signal Size", params[3], 
            ", ", model_fit, " Model Fit")
-}
-
-# Use RColorBrewer palette in plotting
-brew_colors <- brewer.pal(n = 8, name = "Set1")
-
-# Assign specific colors to each category
-named_colors <- c("1" = brew_colors[1],
-                  "2" = brew_colors[2],
-                  "1, Truth" = brew_colors[4],
-                  "2, Truth" = brew_colors[5])
-
-# Labels for the legend
-labels <- c("1" = "1, Estimated",
-            "2" = "2, Estimated",
-            "1, Truth" = "1, Truth",
-            "2, Truth" = "2, Truth")
-
-# Plot training simdata and overlay estimated parameters
-plot_sim_means <- function(simdat, cv, plot_band = TRUE, plot_model = TRUE) {
-    if(plot_model) {
-        flowtrend::plot_1d(simdat$ybin_list, simdat$countslist, cv$bestres, 
-                           bin = TRUE, plot_band = plot_band) + 
-            geom_line(data = data.frame(x = rep(1:296, 2), 
-                                        y = c(simdat$mean_spec, simdat$pico_mu), 
-                                        prob = c(simdat$prob_spec, 1 - simdat$prob_spec),
-                                        clust = rep(c("1, Truth", "2, Truth"), 
-                                                    each = 296)), 
-                      mapping = aes(x = x, y = y, color = clust), lineend = "round", linewidth = 1, 
-                      linetype = "twodash") + 
-            scale_color_manual(name = "Cluster", values = named_colors, labels = labels) + 
-            scale_linewidth_continuous(name = "Cluster Probability", range = c(0.25, 4)) + 
-            labs(title = get_title(cv, 1))
-    } else {
-        flowtrend::plot_1d(simdat$ybin_list, simdat$countslist, 
-                           bin = TRUE) + 
-            geom_line(data = data.frame(x = rep(1:296, 2), 
-                                        y = c(simdat$mean_spec, simdat$pico_mu), 
-                                        prob = c(simdat$prob_spec, 1 - simdat$prob_spec),
-                                        clust = rep(c("1, Truth", "2, Truth"), 
-                                                    each = 296)), 
-                      mapping = aes(x = x, y = y, color = clust, linewidth = prob), lineend = "round") + 
-            scale_color_manual(name = "Cluster", 
-                               values = c("1, Truth" = "purple", 
-                                          "2, Truth" = "#E69F00")) + 
-            scale_linewidth_continuous(name = "Cluster Probability", 
-                                       range = c(0.25, 4)) + 
-            labs(title = get_title(cv, 1))
-    } 
 }
 
 results_list_file <- file.path("1_simulation", "results", "00_results_list.Rdata")
@@ -206,16 +159,16 @@ if(!file.exists(results_list_file)) {
 
 results_file <- file.path("1_simulation", "results", "00_results.Rdata")
 
+scenarios <- c("Linear Data", "Interaction Mean", 
+               "Quadratic Mean", "Logistic Mean", 
+               "Interaction Logit", "Quadratic Logit", 
+               "Logistic Logit")
+
 if(!file.exists(results_file)) {
     # Collect model evaluation results into one data frame 
     results <- lapply(results_list, function(res) {
         res$results
     })%>% bind_rows()
-
-    scenarios <- c("Linear Data", "Interaction Mean", 
-                   "Quadratic Mean", "Logistic Mean", 
-                   "Interaction Logit", "Quadratic Logit", 
-                   "Logistic Logit")
 
     results$signal_size <- factor(results$signal_size, levels = 1:10)
     results$scenario <- factor(results$scenario, 
@@ -264,94 +217,226 @@ new_results <- results %>%
 p1 <- ggplot(filter(new_results, scenario == "Linear Data")) + 
     geom_line(aes(signal_size, nll_oos_oracle_diff, group = model_fit, col = model_fit, 
                   linetype = model_fit), linewidth = 1) + 
-    scale_linetype_manual(values = c("Linear" = "dashed", "Nonlinear" = "solid")) + 
+    scale_linetype_manual(values = c("Linear" = "dotdash", "Nonlinear" = "solid")) + 
     scale_x_continuous(breaks = seq(0, 1, by = 0.2), limits = c(0, 1)) + 
-    theme(legend.title = element_text(size = 14), legend.text = element_text(size = 14),
-        legend.key.size = unit(1.5, "lines"), 
+    theme(legend.title = element_text(size = 18, hjust = 0.4), legend.text = element_text(size = 16),
+        legend.key.size = unit(2.5, "lines"), 
         legend.margin = margin(0, 0, 20, 60), 
-        plot.title = element_text(size = 16, margin = margin(t = 5, b = 10)),
-        axis.title = element_text(size = 16),  # Axis labels
+        plot.title = element_textbox_simple(
+          size = 20,
+          margin = margin(t = 5, b = 10),
+          face = "bold",
+          fill = "grey85",
+          box.color = NA,
+          padding = margin(3, 6, 0.5, 6), 
+          halign = 0.5
+        ),
+        axis.title = element_text(size = 16),
         axis.text = element_text(size = 14), 
         axis.title.y.left = element_text(margin = margin(r = 10))) + 
-    labs(title = "Linear Data", y = "NLL (Above Oracle)", x = "", color = "Fitted Model", 
-         linetype = "Fitted Model")
+    labs(title = "Linear Means\nand Probabilities", y = "NLPL (Above Oracle)", x = "", 
+         color = "Model", 
+         linetype = "Model") + 
+    guides(color = guide_legend(ncol = 2), linetype = guide_legend(ncol = 2))
 
 leg <- get_legend(p1)
 leg <- as_ggplot(leg)
 
-p1 <- p1 + theme(legend.position = "none")
+p1 <- p1 + 
+    theme(legend.position = "none")
 
 # Create the remaining panels
 p_list <- lapply(scenarios, function(cur_scenario) {
     if(cur_scenario == "Linear Data") {
         return(p1)
     } else {
-        if(cur_scenario == "Interaction Logit") {
-            y_lab <- "NLL (Above Oracle)"
-        } else {
-            y_lab <- ""
-        }
         p <- ggplot(filter(new_results, scenario == cur_scenario)) + 
                 geom_line(aes(signal_size, nll_oos_oracle_diff, group = model_fit, col = model_fit, 
                               linetype = model_fit), linewidth = 1) + 
-                scale_linetype_manual(values = c("Linear" = "dashed", "Nonlinear" = "solid")) + 
+                scale_linetype_manual(values = c("Linear" = "dotdash", "Nonlinear" = "solid")) + 
                 scale_x_continuous(breaks = seq(0, 1, by = 0.2), limits = c(0, 1)) + 
                 theme(legend.position = "none", 
                       plot.title = element_text(size = 16, margin = margin(t = 5, b = 10)),
-                      axis.title = element_text(size = 16),  # Axis labels
-                      axis.text = element_text(size = 14), ) + 
-                labs(title = cur_scenario, y = y_lab, x = "")
+                      axis.title = element_text(size = 16),
+                      axis.text = element_text(size = 14)) + 
+                labs(title = strsplit(cur_scenario, " ")[[1]][1], y = "", x = "")
     }
 })
 
 # Attach legend and x-axis label
 p_list[[length(p_list) + 1]] <- leg
-p_list[[9]] <- text_grob("Signal Size", size = 14, y = 0.9)
+p_list[[9]] <- text_grob(expression("Signal Size (" * Delta * ")"), size = 14, x = 0.53, y = 0.9)
 layout_mat <- matrix(c(1, 2, 3, 4, 
                        8, 5, 6, 7, 
                        9, 9, 9, 9), nrow = 3, byrow = TRUE)
 
-# Figure 2
-pdf(file.path("plots", "nll_cont_signal.pdf"), 16, 7.9)
-grid.arrange(grobs = p_list, layout_matrix = layout_mat, widths = c(1, 1, 1, 1, 0.1), 
-            heights = c(1, 1, 0.1))
+p_list[[10]] <- grobTree(
+    rectGrob(gp = gpar(fill = "grey85", col = NA), height = unit(0.75, "cm"), 
+             y = 0.275, width = unit(0.92, "npc"), x = unit(0.534, "npc")),
+    text_grob("Nonlinear Means", size = 20, face = "bold", just = "top", 
+              x = 0.5075)
+)
+
+p_list[[11]] <- grobTree(
+    rectGrob(gp = gpar(fill = "grey85", col = NA), height = unit(0.75, "cm"), 
+             y = 0.275, width = unit(0.91, "npc"), x = unit(0.5375, "npc")),
+    text_grob("Nonlinear Probabilities", size = 20, face = "bold", just = "top", 
+        x = 0.5325, y = 0.8)
+)
+
+layout_mat <- matrix(c(10, 10, 10, 10,
+                       1, 2, 3, 4, 
+                       11, 11, 11, 11,
+                       8, 5, 6, 7, 
+                       9, 9, 9, 9), nrow = 5, byrow = TRUE)
+
+p_list[[12]] <- nullGrob()
+layout_mat <- matrix(c(12, 10, 10, 10,
+                       12, 2, 3, 4, 
+                       1, 2, 3, 4, 
+                       1, 11, 11, 11,
+                       1, 12, 12, 12,
+                       1, 5, 6, 7,
+                       8, 5, 6, 7, 
+                       9, 9, 9, 9), ncol = 4, byrow = TRUE)
+
+pdf(file.path("plots", "Figure03.pdf"), 16, 7.9)
+grid.arrange(grobs = p_list, layout_matrix = layout_mat, 
+             heights = c(0.25, 0.89, 1.11, 0.1, 0.05, 1.11, 0.89, 0.15), 
+             widths = c(1.05, 1, 1, 1))
 graphics.off()
 
 #################
 
-# Figure 1
+# Figure 2
 
-p1 <- plot_sim_means(results_list[[95]]$is_data, results_list[[95]]$cvobj, plot_model = TRUE) + 
-    theme_gray() +
-    # theme(legend.position = "none") + 
-    guides(fill = "none") + 
-    labs(x = "", y = "Data (Interaction Mean)", title = "Linear Model Fit") + 
-    theme(legend.title = element_text(size = 18),   # Title size
-          legend.text = element_text(size = 16),    # Item text size
-          legend.key.size = unit(2, "lines"))
+brew_colors <- brewer.pal(n = 8, name = "Set1")
 
-leg <- get_legend(p1) %>% 
+named_colors <- c("1" = brew_colors[5],
+                  "2" = brew_colors[2],
+                  "Truth" = "black", 
+                  "True 95% CI" = "black")
+
+named_linetypes <- c("1" = "solid", 
+                     "2" = "solid", 
+                    "Truth" = "twodash", 
+                    "True 95% CI" = "dotted")
+
+# Labels for the legend
+labels <- c("1" = "Cluster 1 Estimated Mean",
+            "2" = "Cluster 2 Estimated Mean",
+            "Truth" = "True Mean", 
+            "True 95% CI" = "True 95% Probability Region")
+
+plot_sim_means <- function(simdat, cv, plot_band = TRUE, plot_model = TRUE) {
+    if(plot_model) {
+        flowtrend::plot_1d(simdat$ybin_list, simdat$countslist, cv$bestres, 
+                           bin = TRUE, plot_band = plot_band) + 
+            geom_line(data = data.frame(x = rep(1:296, 2), 
+                                        y = c(simdat$mean_spec, simdat$pico_mu), 
+                                        prob = c(simdat$prob_spec, 1 - simdat$prob_spec),
+                                        clust = "Truth",
+                                        clust_group = rep(c("1, Truth", "2, Truth"), 
+                                                    each = 296)), 
+                      mapping = aes(x = x, y = y, group = clust_group, 
+                                    color = clust, linetype = clust), 
+                      lineend = "round", linewidth = 1) + 
+            scale_color_manual(name = "", 
+                               values = named_colors, 
+                               labels = labels) + 
+            scale_linetype_manual(name = "", 
+                                  values = named_linetypes, 
+                                  labels = labels) + 
+            scale_linewidth_continuous(name = "Cluster Probability", 
+                                       range = c(1, 4)) + 
+            labs(title = get_title(cv, 1))
+    } else {
+        flowtrend::plot_1d(simdat$ybin_list, simdat$countslist, 
+                           bin = TRUE) + 
+            geom_line(data = data.frame(x = rep(1:296, 2), 
+                                        y = c(simdat$mean_spec, simdat$pico_mu), 
+                                        prob = c(simdat$prob_spec, 1 - simdat$prob_spec),
+                                        clust = rep(c("1, Truth", "2, Truth"), 
+                                                    each = 296)), 
+                      mapping = aes(x = x, y = y, color = clust, linewidth = prob), lineend = "round") + 
+            scale_color_manual(name = "Cluster", 
+                               values = c("1, Truth" = "purple", 
+                                          "2, Truth" = "#E69F00")) + 
+            scale_linewidth_continuous(name = "Cluster Probability", 
+                                       range = c(0.25, 4)) + 
+            labs(title = get_title(cv, 1))
+    } 
+}
+
+true_1_upper <- results_list[[91]]$is_data$mean_spec[,1] + 1.96 * 0.2
+true_1_lower <- results_list[[91]]$is_data$mean_spec[,1] - 1.96 * 0.2
+
+true_2_upper <- results_list[[91]]$is_data$pico_mu + 1.96 * 0.2
+true_2_lower <- results_list[[91]]$is_data$pico_mu - 1.96 * 0.2
+
+ci_df <- data.frame(x = rep(1:296, 4), 
+                    y = c(true_1_upper, true_1_lower, true_2_upper, true_2_lower), 
+                    Cluster = rep(c("1, Truth", "2_Truth"), each = 296 * 2), 
+                    type = rep(rep(c("upper", "lower"), each = 296), 2), 
+                    clust = "True 95% CI")
+
+p11 <- plot_sim_means(results_list[[91]]$is_data, results_list[[91]]$cvobj, plot_model = TRUE) + 
+    geom_line(data = ci_df, 
+             mapping = aes(x = x, y = y,
+                           group = interaction(Cluster, type), 
+                           linetype = clust, 
+                           color = clust), 
+             lineend = "round", 
+             linewidth = 1) + 
+    theme_gray() + 
+    theme(plot.title = element_text(size = 20, margin = margin(t = 5, b = 10)), 
+          axis.title = element_text(size = 18), 
+          axis.text = element_text(size = 14),
+          legend.position = "right",
+          legend.title = element_text(size = 18),
+          legend.text = element_text(size = 18, margin = margin(r = 50)), 
+          legend.key.size = unit(2, "lines"), 
+          legend.margin = margin(0, 0, 0, 0)) + 
+    guides(color = guide_legend(override.aes = list(linetype = c("solid",  
+                                                                 "solid", 
+                                                                 "dotted", 
+                                                                 "twodash")), 
+                                nrow = 2, ncol = 2),
+           linetype = "none",
+           linewidth = "none",
+           fill = "none") + 
+    scale_y_continuous(limits = c(0.25, 2)) + 
+    labs(x = "", y = "Data", title = "Estimated Linear Model")
+
+leg <- get_legend(p11) %>% 
     as_ggplot()
 
-p1 <- p1 + 
-    theme(legend.position = "none", 
-          plot.title = element_text(size = 20, margin = margin(t = 5, b = 10)),
-          axis.title = element_text(size = 18),  # Axis labels
-          axis.text = element_text(size = 14), 
-          axis.title.y.left = element_text(margin = margin(r = 10))) # , axis.text.y = element_text(margin = margin(r = 15)))
+p11 <- p11 + 
+    theme(legend.position = "none")
 
-p2 <- plot_sim_means(results_list[[96]]$is_data, results_list[[96]]$cvobj, plot_model = TRUE) + 
+p12 <- plot_sim_means(results_list[[92]]$is_data, results_list[[92]]$cvobj, plot_model = TRUE) + 
+    geom_line(data = ci_df, 
+             mapping = aes(x = x, y = y,
+                           group = interaction(Cluster, type), 
+                           linetype = clust, 
+                           color = clust), 
+             lineend = "round", 
+             linewidth = 1)  + 
+    scale_y_continuous(limits = c(0.25, 2)) + 
     theme_gray() + 
     theme(legend.position = "none", 
           plot.title = element_text(size = 20, margin = margin(t = 5, b = 10)),
-          axis.title = element_text(size = 18),  # Axis labels
+          axis.title = element_text(size = 18),
           axis.text = element_text(size = 14)) + 
-    labs(x = "", y = "", title = "Nonlinear Model Fit")
+    labs(x = "", y = "", title = "Estimated Nonlinear Model")
 
-x_lab <- text_grob("Time", size = 18, x = 0.52, y = 0.9)
-pdf("plots/00_sim_data.pdf", 14, 6.5)
-grid.arrange(p1, p2,
-             x_lab, leg, layout_matrix = matrix(c(1, 2, 4,
-                                                  3, 3, 4), byrow = TRUE, nrow = 2), 
-             widths = c(1, 1, 0.45), heights = c(1, 0.1))
+x_lab <- text_grob("Time (t)", size = 18, x = 0.53, y = 0.9)
+
+pdf(file.path("plots", "Figure02.pdf"), 14.6, 8.5)
+grid.arrange(p11, p12,
+             x_lab, leg, nullGrob(), 
+             layout_matrix = matrix(c(1, 1, 2, 2,
+                                      3, 3, 3, 3,
+                                      5, 4, 4, 5), byrow = TRUE, nrow = 3), 
+             widths = c(0.27, 0.73, 0.95, 0.05), heights = c(1, 0.01, 0.2))
 graphics.off()
