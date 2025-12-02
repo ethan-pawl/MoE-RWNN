@@ -5,7 +5,8 @@ This is the code and data repository which supplements the article titled above.
 To reproduce the results in the paper on a high-performance computing (HPC) environment, go into the `.slurm` scripts and specify any `#SBATCH` directives you need in order to make the scripts work with your specific resources, install any required R libraries (listed below) then follow these steps: 
 
 ```bash
-Rscript 0_data_prep/00_data_prep.R
+Rscript 0_data_prep/00_EDA.R
+Rscript 0_data_prep/01_data_prep.R
 
 Rscript 1_simulation/10_sim_04_gen.R
 chmod +x 1_simulation/11_sim_04.slurm

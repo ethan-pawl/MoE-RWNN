@@ -1,5 +1,6 @@
 data/*.Rdata
 plots/*
+data/X_variations
 1_simulation/simdata
 1_simulation/aux_simdata
 1_simulation/job_tracking
