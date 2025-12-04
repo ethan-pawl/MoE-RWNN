@@ -87,7 +87,7 @@ ordered_covs_labs <- c(
   "Nitrate",
   "Oxygen",
   "O2Sat",
-  "Sensity",
+  "Density",
   "O2",
   "PO4",
   "PHYC",
