@@ -9,6 +9,8 @@ library(RColorBrewer)
 library(ggtext)
 library(grid)
 
+# TODO: alter this to work correctly with the new setup
+
 # Collect results
 simdata_dir <- file.path("1_simulation", "simdata")
 cvres_files <- list.files(file.path("1_simulation", "results"), 

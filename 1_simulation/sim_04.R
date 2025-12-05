@@ -10,11 +10,20 @@ RhpcBLASctl::blas_set_num_threads(1)
 args <- commandArgs(trailingOnly = TRUE)
 i <- as.integer(args[1])
 
+# Set to TRUE if you want new results
+# Set to FALSE to reproduce our results
+new_seedtab <- as.logical(args[2])
+
 #################
 
 # Make a table to map the SLURM array index to a simulation scenario 
-sims <- rbind(expand.grid(1, 1:4, 1:10, c("l", "n"), stringsAsFactors = FALSE), 
-              expand.grid(2:4, 1, 1:10, c("l", "n"), stringsAsFactors = FALSE))              
+# sims <- rbind(expand.grid(1, 1:4, 1:10, c("l", "n"), stringsAsFactors = FALSE), 
+#               expand.grid(2:4, 1, 1:10, c("l", "n"), stringsAsFactors = FALSE))   
+sims <- rbind(
+    expand.grid(1, 1:4, 1:10, c("NA", "70"), stringsAsFactors = FALSE), 
+    expand.grid(2:4, 1, 1:10, c("NA", "70"), stringsAsFactors = FALSE),
+    expand.grid(2, 1, 5, c("35", "105", "140", "175"), stringsAsFactors = FALSE) # Robustness against hidden layer width
+)
 colnames(sims) <- c("imean", "iprob", "iint", "modelFit")
 
 ############################
@@ -32,7 +41,7 @@ make_seedtab <- function(imean, iprob, iint, modelFit) {
     nalpha <- 10
     nbeta <- 10
     nfold <- 5
-    nrep <- 30
+    nrep <- 10
     nrows <- nalpha * nbeta * (nfold + 1) * nrep
 
     seed_destin <- file.path("1_simulation", "seedtabs")
@@ -122,7 +131,7 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
     blocksize <- 20
 
     # Number of EM restarts
-    nrep <- 30
+    nrep <- 10
 
     seedtab <- read.csv(file.path("1_simulation", 
                                   "seedtabs",
@@ -136,11 +145,13 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
         dir.create(destin, recursive = TRUE)
     }
 
-    # either way, loads in an object named X
-    load(file.path("data",
-                   switch(modelFit, 
-                          l = "X_pc.Rdata", 
-                          n = "X_nl.Rdata")))
+    X_dir <- file.path("data", "X_variations")
+    X <- readRDS(file.path(X_dir, paste0("X_pc_9_nh_", modelFit, "_seed_NA_ofold_NA_ifold_NA.RDS")))
+
+    # load(file.path("data",
+    #                switch(modelFit, 
+    #                       l = "X_pc.Rdata", 
+    #                       n = "X_nl.Rdata")))
 
     # Define the cross-validation hyperparameter grid
     max_prob_lambda <- 24
@@ -168,44 +179,103 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
     folds <- make_cv_folds(ylist, nfold, blocksize)
     
     # Perform k-fold cross-validation
-    cv.flowmix(ylist, 
-               countslist, 
-               X, 
-               destin, 
-               mean_lambdas, 
-               prob_lambdas,
-               NULL, 
-               maxdev, 
-               numclust, 
-               nfold, 
-               nrep, 
-               TRUE, 
-               FALSE, 
-               TRUE, 
-               availableCores() - 2, 
-               blocksize, 
-               folds, 
-               seedtab)
 
-    # Refit model on entire dataset
-    cv.flowmix(ylist, 
-               countslist, 
-               X, 
-               destin, 
-               mean_lambdas, 
-               prob_lambdas,
-               NULL, 
-               maxdev, 
-               numclust, 
-               nfold, 
-               nrep, 
-               TRUE, 
-               TRUE, 
-               FALSE, 
-               availableCores() - 2, 
-               blocksize, 
-               folds, 
-               seedtab)
+    # Make a grid to index individual CV jobs
+    iimat <- make_iimat(
+        cv_gridsize = cv_gridsize, 
+        nfold = nfold, 
+        nrep = nrep
+    )
+
+    # saving all metadata except X since X 
+    # changes across folds
+    save(
+        folds,
+        nfold,
+        nrep,
+        cv_gridsize,
+        mean_lambdas,
+        prob_lambdas,
+        ylist, 
+        countslist,
+        file = file.path(destin, 'meta.Rdata')
+    )
+
+    print(paste0("wrote meta data to ", file.path(destin, 'meta.Rdata')))
+
+    # Parallelize over all CV jobs
+    empty <- mclapply(
+        1:nrow(iimat), 
+        function(ii) {
+            ialpha <- iimat[,"ialpha"]
+            ibeta <- iimat[,"ibeta"]
+            ifold <- iimat[,"ifold"]
+            irep <- iimat[,"irep"]
+
+            cat("\r", ii "out of", nrow(iimat) "cross-validation jobs.")
+            
+            # Load the correct version of the 
+            # dataset where PCA has been learned 
+            # on the subset of the data with the 
+            # current fold held out.
+            cur_X <- readRDS(
+                file.path(
+                    X_dir, 
+                    paste0(
+                        "X_pc_9_nh_", 
+                        modelFit, 
+                        "_seed_NA_ofold_", 
+                        ifold, 
+                        "_ifold_NA.RDS"
+                    )
+                ) 
+            )
+
+            one_job(
+                ialpha = ialpha,
+                ibeta = ibeta, 
+                ifold = ifold, 
+                irep = irep, 
+                folds = folds, 
+                destin = destin, 
+                mean_lambdas = mean_lambdas, 
+                prob_lambdas = prob_lambdas, 
+                seedtab = seedtab, 
+                ylist = ylist, 
+                countslist = countslist, 
+                X = cur_X,
+                maxdev = maxdev, 
+                numclust = numclust
+            )
+
+        }, 
+        mc.cores = availableCores() - 1, 
+        mc.preschedule = FALSE
+    )
+
+    # Now we are refitting on the 
+    # entire dataset so it is OK to learn PCA 
+    # from all the data.
+    cv.flowmix(
+        ylist = ylist, 
+        countslist = countslist, 
+        X = X, 
+        destin = destin, 
+        mean_lambdas = mean_lambdas, 
+        prob_lambdas = prob_lambdas,
+        iimat = NULL, 
+        maxdev = maxdev, 
+        numclust = numclust, 
+        nfold = nfold, 
+        nrep = nrep, 
+        verbose = TRUE, 
+        refit = TRUE, 
+        save_meta = FALSE, 
+        mc.cores = availableCores() - 1, 
+        blocksize = blocksize, 
+        folds = folds, 
+        seedtab = seedtab
+    )
 
     # Summarize k-fold cross-validation and refitting results
     cv_summary(destin = destin, 
@@ -215,5 +285,5 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
 
 # Call run_sim(i, sims, TRUE) if you don't want to reproduce our results 
 if(!sim_done(i, sims)) {
-    run_sim(i, sims)
+    run_sim(i, sims, new_seedtab)
 }

@@ -17,8 +17,9 @@ mc.cores <- availableCores() - 1
 
 # Importing covariates
 
-load(file.path("data", "X_pc.Rdata"))
-X_pc <- X
+X_pc <- readRDS(file.path("data", "X_variations", "X_pc_9_nh_NA_seed_NA_ofold_NA_ifold_NA.RDS"))
+# load(file.path("data", "X_pc.Rdata"))
+# X_pc <- X
 
 # Picking PC1 & PC2 to generate the means and PC1 & PC4 to generate the probs
 

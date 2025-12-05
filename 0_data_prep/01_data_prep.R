@@ -69,9 +69,9 @@ if(!dir.exists(X_dir)) { # This is a bit intensive; don't repeat if already done
       # To match the interpretation in 00_EDA.R (Figures 1, 10, and 11), 
       # we need to flip the signs of the PCs
       X_pc[,1] <- -X_pc[,1]
-      X_pc[,2] <- -X_pc[,2]
-      X_pc[,3] <- -X_pc[,3]
-      X_pc[,4] <- -X_pc[,4]
+      # X_pc[,2] <- -X_pc[,2]
+      # X_pc[,3] <- -X_pc[,3]
+      # X_pc[,4] <- -X_pc[,4]
 
       save_X(X_pc, X_dir, n_PCs = n_PCs)
 

@@ -157,9 +157,9 @@ corplot <- ggplot(cor_df) +
 # More interpretable if we flip the signs
 
 X_pc[,1] <- -X_pc[,1]
-X_pc[,2] <- -X_pc[,2]
-X_pc[,3] <- -X_pc[,3]
-X_pc[,4] <- -X_pc[,4]
+# X_pc[,2] <- -X_pc[,2]
+# X_pc[,3] <- -X_pc[,3]
+# X_pc[,4] <- -X_pc[,4]
 
 # Bind latitude to get correlations b/w latitude, 
 # principal components, and covariates
