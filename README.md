@@ -50,3 +50,9 @@ Rscript 2_application/21_all_data/211_pcr_results.R
 - `gtools`
 - `remotes`
   - to install `flowmix` and `flowtrend`
+
+If you're using conda, you can simply use
+
+```bash
+conda install -c conda-forge r-gridExtra r-ggplot2 r-ggpubr r-ggtext r-RColorBrewer r-maps r-dplyr r-tidyr r-tibble r-lubridate r-reshape2 r-parallelly r-RhpcBLASctl r-gtools r-remotes 
+```
