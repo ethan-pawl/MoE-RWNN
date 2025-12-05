@@ -11,12 +11,12 @@
 
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem-per-cpu=500MB
-#SBATCH --time=02:00:00
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=4G
+#SBATCH --time=48:00:00
 #SBATCH --output=./logs/%x_%A_%a.log
 #SBATCH --error=./logs/%x_%A_%a.err
-#SBATCH --array=1-140
+#SBATCH --array=1-144
 #SBATCH --job-name=simulation
 
 ###
@@ -36,4 +36,4 @@ mkdir -p "${failure_dir}"
 
 # Loop through all simulation scenarios while keeping track of 
 # which jobs fail and which run successfully
-Rscript 1_simulation/sim_04.R $SLURM_ARRAY_TASK_ID && echo "success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt
+Rscript 1_simulation/sim_04.R $SLURM_ARRAY_TASK_ID TRUE && echo "success" > ${success_dir}/${SLURM_ARRAY_TASK_ID}.txt || echo "failure" > ${failure_dir}/${SLURM_ARRAY_TASK_ID}.txt

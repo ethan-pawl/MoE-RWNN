@@ -1,10 +1,12 @@
 library(flowmix)
 library(parallel)
-library(parallelly)
+# library(parallelly)
 library(dplyr)
 
 # To prevent multi-threaded BLAS which conflicts with mclapply
-RhpcBLASctl::blas_set_num_threads(1)
+RhpcBLASctl::blas_set_num_threads(2)
+RhpcBLASctl::omp_set_num_threads(2)
+# Allowing parallel BLAS
 
 # Input SLURM array index
 args <- commandArgs(trailingOnly = TRUE)
@@ -249,7 +251,8 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
             )
 
         }, 
-        mc.cores = availableCores() - 1, 
+        # mc.cores = availableCores() - 1, 
+        mc.cores = 1, # No parallelization
         mc.preschedule = FALSE
     )
 
@@ -271,7 +274,8 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
         verbose = TRUE, 
         refit = TRUE, 
         save_meta = FALSE, 
-        mc.cores = availableCores() - 1, 
+        mc.cores = 1, # no parallelization
+        # mc.cores = availableCores() - 1, 
         blocksize = blocksize, 
         folds = folds, 
         seedtab = seedtab
