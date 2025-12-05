@@ -45,7 +45,8 @@ Rscript 2_application/21_all_data/211_pcr_results.R
 - `tibble`
 - `lubridate`
 - `reshape2`
-- `parallel`
 - `parallelly`
 - `RhpcBLASctl`
 - `gtools`
+- `remotes`
+  - to install `flowmix` and `flowtrend`
