@@ -1,11 +1,10 @@
 library(flowmix)
 library(parallel)
-# library(parallelly)
+library(parallelly)
 library(dplyr)
 
-# To prevent multi-threaded BLAS which conflicts with mclapply
-RhpcBLASctl::blas_set_num_threads(2)
-RhpcBLASctl::omp_set_num_threads(2)
+RhpcBLASctl::blas_set_num_threads(availableCores())
+RhpcBLASctl::omp_set_num_threads(availableCores())
 # Allowing parallel BLAS
 
 # Input SLURM array index
@@ -214,7 +213,7 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
             ifold <- iimat[,"ifold"]
             irep <- iimat[,"irep"]
 
-            cat("\r", ii "out of", nrow(iimat) "cross-validation jobs.")
+            cat("\r", ii, "out of", nrow(iimat), "cross-validation jobs.")
             
             # Load the correct version of the 
             # dataset where PCA has been learned 

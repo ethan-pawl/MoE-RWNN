@@ -11,7 +11,7 @@ replic <- 0:1 # 0 is held-out dataset
 nt <- 1000 # number of particles per cytogram (time index)
 clust_sig <- 0.2 # cluster standard deviation
 gridsize <- 50 # number of bins in each dimension
-mc.cores <- availableCores() - 1
+mc.cores <- max(availableCores() - 1, 1)
 
 ############## 
 
@@ -226,7 +226,7 @@ save(manual.grid, file = file.path(aux_simdata_dir, "manual_grid.Rdata"))
 binobj <- bin_many_cytograms(sim_data$ylist, manual.grid, 
                                          mc.cores = mc.cores)
 
-simdata <- list("ylist" = sim_data[[1]], "ybin_list" = binobj$ybin_list, 
+simdata1 <- list("ylist" = sim_data[[1]], "ybin_list" = binobj$ybin_list, 
                 "countslist" = binobj$counts_list,
                 "zlist" = sim_data[[2]], 
                 "X_mu" = X_mn_list[[imean]], 
@@ -241,6 +241,7 @@ simdata <- list("ylist" = sim_data[[1]], "ybin_list" = binobj$ybin_list,
                 "fname" = make_data_fname(imean, iprob, iint, replic_seed))
 
 # Save the dataset
+simdata <- simdata1
 save(simdata, file = file.path(simdata_dir, make_data_fname(imean, iprob, iint, replic_seed)))
 
 # Create the rest of the datasets, save them, and gather them into a list
@@ -248,7 +249,7 @@ dat_list <- lapply(1:10, function(iint) {
     lapply(replic, function(replic_seed) {
         lapply(1:nrow(mu_pi_mat), function(isettings) {
             if(iint == 10 & replic_seed == 1 & isettings == 1) {
-                return(res1)
+                return(simdata1)
             } else {
                 imean <- mu_pi_mat[isettings,"mu"]
                 iprob <- mu_pi_mat[isettings,"pi"]
