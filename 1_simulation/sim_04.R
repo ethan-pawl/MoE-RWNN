@@ -14,6 +14,9 @@ i <- as.integer(args[1])
 # Set to FALSE to reproduce our results
 new_seedtab <- as.logical(args[2])
 
+# TODO: make sure I'm not conflating seed to generate the data and 
+# RWNN seed
+
 #################
 
 # Make a table to map the SLURM array index to a simulation scenario 
@@ -24,6 +27,8 @@ sims <- rbind(
     expand.grid(2:4, 1, 1:10, c("NA", "70"), stringsAsFactors = FALSE),
     expand.grid(2, 1, 5, c("35", "105", "140", "175"), stringsAsFactors = FALSE) # Robustness against hidden layer width
 )
+
+# For now, the seeds will all be the same for the RWNN
 colnames(sims) <- c("imean", "iprob", "iint", "modelFit")
 sims$NNseed <- "NA"
 sims$NNseed[sims$modelFit != "NA"] <- 1
@@ -31,6 +36,7 @@ sims$NNseed[sims$modelFit != "NA"] <- 1
 # For now
 sims$dataSeed <- 1 
 
+# FIXME: I'm forgetting to input the RWNN seed
 ############################
 
 # For each simulation scenario, make a table 
@@ -192,10 +198,6 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
             )
         )
     )
-    # load(file.path("1_simulation", 
-    #                "simdata", 
-    #                paste0("simdata-", imean, "-", iprob, "-", iint, "-", "1", ".Rdata")))
-
     # Data
     ylist <- simdata$ybin_list
     countslist <- simdata$countslist
@@ -316,8 +318,8 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
                         "X_pc_9_nh_", 
                         modelFit, 
                         "_seed_", 
-			NNseed, 
-			"_ofold_", 
+			            NNseed, 
+			            "_ofold_", 
                         ifold, 
                         "_ifold_NA.RDS"
                     )
