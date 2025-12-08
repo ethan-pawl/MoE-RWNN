@@ -5,7 +5,6 @@ library(dplyr)
 
 RhpcBLASctl::blas_set_num_threads(availableCores())
 RhpcBLASctl::omp_set_num_threads(availableCores())
-# Allowing parallel BLAS
 
 # Input SLURM array index
 args <- commandArgs(trailingOnly = TRUE)
@@ -26,6 +25,11 @@ sims <- rbind(
     expand.grid(2, 1, 5, c("35", "105", "140", "175"), stringsAsFactors = FALSE) # Robustness against hidden layer width
 )
 colnames(sims) <- c("imean", "iprob", "iint", "modelFit")
+sims$NNseed <- "NA"
+sims$NNseed[sims$modelFit != "NA"] <- 1
+
+# For now
+sims$dataSeed <- 1 
 
 ############################
 
@@ -36,20 +40,34 @@ colnames(sims) <- c("imean", "iprob", "iint", "modelFit")
 
 #  If you want to reproduce our results, don't run this function. Instead, 
 # use the given seedtabs in the GitHub repository.
-make_seedtab <- function(imean, iprob, iint, modelFit) {
+make_seedtab <- function(imean, iprob, iint, modelFit, NNseed) {
     RNGkind("L'Ecuyer-CMRG")
     # 10 x 10 5-fold cross-validation with 30 EM restarts
     nalpha <- 10
     nbeta <- 10
     nfold <- 5
-    nrep <- 10
+    nrep <- 30
     nrows <- nalpha * nbeta * (nfold + 1) * nrep
 
     seed_destin <- file.path("1_simulation", "seedtabs")
     if(!dir.exists(seed_destin)) dir.create(seed_destin)
 
-    seedfile <- file.path(seed_destin,
-                          paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_seedtab.csv"))
+    seedfile <- file.path(
+        seed_destin,
+        paste0(
+            "imean_", 
+            imean, 
+            "_iprob_", 
+            iprob, 
+            "_iint_",
+            iint, 
+            "_nh_", 
+            modelFit, 
+            "_NNseed_",
+            NNseed, 
+            "_seedtab.csv"
+        )
+    )
     
     if(file.exists(seedfile)) {
         print("seedtab already exists.")
@@ -83,16 +101,56 @@ sim_done <- function(i, sims) {
     iprob <- sims[i, "iprob"]
     iint <- sims[i, "iint"]
     modelFit <- sims[i, "modelFit"]
+    NNseed <- sims[i, "NNseed"]
 
-    fname <- file.path("1_simulation",
-                       "results", 
-                       paste0(imean, "-", iprob, "-", iint, "-", modelFit),
-                       paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_summary.RDS"))
+    fname <- file.path(
+        "1_simulation",
+        "results", 
+        paste0(
+            "imean_", 
+            imean, 
+            "_iprob_", 
+            iprob, 
+            "_iint_",
+            iint, 
+            "_nh_", 
+            modelFit, 
+            "_NNseed_",
+            NNseed
+        ),
+        paste0(
+            "imean_", 
+            imean, 
+            "_iprob_", 
+            iprob, 
+            "_iint_",
+            iint, 
+            "_nh_", 
+            modelFit, 
+            "_NNseed_",
+            NNseed, 
+            "_summary.RDS"
+        )
+    )
     
     
     is_done <- file.exists(fname)
     if(is_done) {
-        cat("Simulation ", imean, "-", iprob, "-", iint, "-", modelFit, " is done.\n", sep = "")
+        cat(
+            "Simulation ",
+            "imean_", 
+            imean, 
+            "_iprob_", 
+            iprob, 
+            "_iint_",
+            iint, 
+            "_nh_", 
+            modelFit, 
+            "_NNseed_",
+            NNseed,
+            " is done.\n", 
+            sep = ""
+        )
     }
 
     return(is_done)
@@ -107,16 +165,36 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
     iprob <- sims[i, "iprob"]
     iint <- sims[i, "iint"]
     modelFit <- sims[i, "modelFit"]
+    NNseed <- sims[i, "NNseed"]
+    dataSeed <- sims[i, "dataSeed"]
 
     if(new_seedtab) {
-        make_seedtab(imean, iprob, iint, modelFit)
+        make_seedtab(imean, iprob, iint, modelFit, NNseed)
     }
 
-    cat("Running simulation ", imean, "-", iprob, "-", iint, "-", modelFit, "\n", sep = "")
+    cat("Running simulation ", imean, "-", iprob, "-", iint, "-", modelFit, "-", NNseed, "\n", sep = "")
 
-    load(file.path("1_simulation", 
-                   "simdata", 
-                   paste0("simdata-", imean, "-", iprob, "-", iint, "-", "1", ".Rdata")))
+    simdata <- readRDS(
+        file.path(
+            "1_simulation", 
+            "simdata",
+            paste0(
+                "simdata", 
+                "_imean_", 
+                imean, 
+                "_iprob_", 
+                iprob, 
+                "_iint_", 
+                iint,
+                "_dataSeed_", 
+                dataSeed, 
+                ".RDS"
+            )
+        )
+    )
+    # load(file.path("1_simulation", 
+    #                "simdata", 
+    #                paste0("simdata-", imean, "-", iprob, "-", iint, "-", "1", ".Rdata")))
 
     # Data
     ylist <- simdata$ybin_list
@@ -132,22 +210,34 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
     blocksize <- 20
 
     # Number of EM restarts
-    nrep <- 10
+    nrep <- 30
 
     seedtab <- read.csv(file.path("1_simulation", 
                                   "seedtabs",
-                                  paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_seedtab.csv")))
+                                  paste0(
+                                    "imean_", 
+                                    imean, 
+                                    "_iprob_", 
+                                    iprob, 
+                                    "_iint_",
+                                    iint, 
+                                    "_nh_", 
+                                    modelFit, 
+                                    "_NNseed_",
+                                    NNseed, 
+                                    "_seedtab.csv"
+                                )))
 
     destin <- file.path("1_simulation",
                         "results", 
-                        paste0(imean, "-", iprob, "-", iint, "-", modelFit))
+                        paste0(imean, "-", iprob, "-", iint, "-", modelFit, "-", NNseed))
 
     if(!dir.exists(destin)) {
         dir.create(destin, recursive = TRUE)
     }
 
     X_dir <- file.path("data", "X_variations")
-    X <- readRDS(file.path(X_dir, paste0("X_pc_9_nh_", modelFit, "_seed_NA_ofold_NA_ifold_NA.RDS")))
+    X <- readRDS(file.path(X_dir, paste0("X_pc_9_nh_", modelFit, "_seed_", NNseed, "_ofold_NA_ifold_NA.RDS")))
 
     # load(file.path("data",
     #                switch(modelFit, 
@@ -208,10 +298,10 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
     empty <- mclapply(
         1:nrow(iimat), 
         function(ii) {
-            ialpha <- iimat[,"ialpha"]
-            ibeta <- iimat[,"ibeta"]
-            ifold <- iimat[,"ifold"]
-            irep <- iimat[,"irep"]
+            ialpha <- iimat[ii,"ialpha"]
+            ibeta <- iimat[ii,"ibeta"]
+            ifold <- iimat[ii,"ifold"]
+            irep <- iimat[ii,"irep"]
 
             cat("\r", ii, "out of", nrow(iimat), "cross-validation jobs.")
             
@@ -219,13 +309,15 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
             # dataset where PCA has been learned 
             # on the subset of the data with the 
             # current fold held out.
-            cur_X <- readRDS(
+	    cur_X <- readRDS(
                 file.path(
                     X_dir, 
                     paste0(
                         "X_pc_9_nh_", 
                         modelFit, 
-                        "_seed_NA_ofold_", 
+                        "_seed_", 
+			NNseed, 
+			"_ofold_", 
                         ifold, 
                         "_ifold_NA.RDS"
                     )
@@ -283,7 +375,7 @@ run_sim <- function(i, sims, new_seedtab = FALSE) {
     # Summarize k-fold cross-validation and refitting results
     cv_summary(destin = destin, 
                save = TRUE, 
-               filename = paste0(imean, "-", iprob, "-", iint, "-", modelFit, "_summary.RDS"))
+               filename = paste0(imean, "-", iprob, "-", iint, "-", modelFit, "-", NNseed, "_summary.RDS"))
 }
 
 # Call run_sim(i, sims, TRUE) if you don't want to reproduce our results 

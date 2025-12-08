@@ -76,8 +76,7 @@ if(!dir.exists(X_dir)) { # This is a bit intensive; don't repeat if already done
       save_X(X_pc, X_dir, n_PCs = n_PCs)
 
     # Test a range of number of hidden nodes
-    for(n_h in c(35, 70, 140)) {
-
+    for(n_h in c(35, 70, 105, 140, 175)) {
       # Resample the hidden layer weights several times
       for(seed in 1:5) {
 

@@ -196,8 +196,19 @@ X_prob_list <- list(X_prob_int, X_prob_inter, X_prob_quad, X_prob_quad, X_prob_s
 bet_list <- list(lin_pro_bet, inter_pro_bet, quad_pro_bet, sig_pro_bet)
 alph_list <- list(lin_pro_alph, inter_pro_alph, quad_pro_alph, sig_pro_alph)
 
-make_data_fname <- function(imean, iprob, iint, irep) {
-    paste0("simdata-", imean, "-", iprob, "-", iint, "-", irep, ".Rdata")
+make_data_fname <- function(imean, iprob, iint, dataSeed) {
+    paste0(
+        "simdata", 
+        "_imean_", 
+        imean, 
+        "_iprob_", 
+        iprob, 
+        "_iint_", 
+        iint,
+        "_dataSeed_", 
+        dataSeed, 
+        ".RDS"
+    )
 }
 
 simdata_dir <- file.path("1_simulation", "simdata")
@@ -209,13 +220,13 @@ times <- rownames(X_pc)
 # and define a grid for binning based on that dataset
 
 iint <- 10 # indexes the signal sizes
-replic_seed <- 1 # training data
+dataSeed <- 1 # training data
 isettings <- 1 # indexes the data configuration
 
 imean <- mu_pi_mat[1,"mu"]
 iprob <- mu_pi_mat[1,"pi"]
 
-set.seed(replic_seed)
+set.seed(dataSeed)
 sim_data <- make_ylist_and_zlist(nt, pi_list[[iprob]], 
                             pro_mu_list[[imean]], pico_mu_list[[imean]][[iint]], 
                             clust_sig, times)
@@ -237,27 +248,26 @@ simdata1 <- list("ylist" = sim_data[[1]], "ybin_list" = binobj$ybin_list,
                 "mean_spec" = pro_mu_list[[imean]], 
                 "prob_spec" = pi_list[[iprob]], "nt" = nt, 
                 "pico_mu" = pico_mu_list[[imean]][[iint]], "clust_sig" = clust_sig, 
-                "seed" = replic_seed, 
-                "fname" = make_data_fname(imean, iprob, iint, replic_seed))
+                "seed" = dataSeed, 
+                "fname" = make_data_fname(imean, iprob, iint, dataSeed))
 
 # Save the dataset
-simdata <- simdata1
-save(simdata, file = file.path(simdata_dir, make_data_fname(imean, iprob, iint, replic_seed)))
+saveRDS(simdata1, file = file.path(simdata_dir,  make_data_fname(imean, iprob, iint, dataSeed)))
 
 # Create the rest of the datasets, save them, and gather them into a list
 dat_list <- lapply(1:10, function(iint) {
-    lapply(replic, function(replic_seed) {
+    lapply(replic, function(dataSeed) {
         lapply(1:nrow(mu_pi_mat), function(isettings) {
-            if(iint == 10 & replic_seed == 1 & isettings == 1) {
+            if(iint == 10 & dataSeed == 1 & isettings == 1) {
                 return(simdata1)
             } else {
                 imean <- mu_pi_mat[isettings,"mu"]
                 iprob <- mu_pi_mat[isettings,"pi"]
 
-                fname <- make_data_fname(imean, iprob, iint, replic_seed)
+                fname <- make_data_fname(imean, iprob, iint, dataSeed)
                 if(!file.exists(file.path(simdata_dir, fname))) {
                     print(paste0(fname, " doesn't exist, making now."))
-                    set.seed(replic_seed)
+                    set.seed(dataSeed)
                     sim_data <- make_ylist_and_zlist(nt, pi_list[[iprob]], 
                                     pro_mu_list[[imean]], pico_mu_list[[imean]][[iint]], 
                                     clust_sig, times)
@@ -276,13 +286,13 @@ dat_list <- lapply(1:10, function(iint) {
                                     "mean_spec" = pro_mu_list[[imean]], 
                                     "prob_spec" = pi_list[[iprob]], "nt" = nt, 
                                     "pico_mu" = pico_mu_list[[imean]][[iint]], "clust_sig" = clust_sig, 
-                                    "seed" = replic_seed, 
+                                    "seed" = dataSeed, 
                                     "fname" = fname)
 
-                    save(simdata, file = file.path(simdata_dir, fname))
+                    saveRDS(simdata, file = file.path(simdata_dir, fname))
                 } else {
                     print(paste0(fname, " done."))
-                    load(file.path(simdata_dir, fname))
+                    simdata <- readRDS(file.path(simdata_dir, fname))
                 }
                 return(simdata)
             }

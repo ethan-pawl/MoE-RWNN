@@ -11,18 +11,24 @@
 
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
-#SBATCH --time=48:00:00
+#SBATCH --partition=512x64-ib
+#SBATCH --qos=pi-shyun
+#SBATCH --account=pi-shyun
+#SBATCH --time=07-00:00:00
 #SBATCH --output=./logs/%x_%A_%a.log
 #SBATCH --error=./logs/%x_%A_%a.err
 #SBATCH --array=1-144
-#SBATCH --job-name=simulation
+#SBATCH --job-name=sim-all
+#SBATCH --mail-user=epawl@ucsc.edu
+#SBATCH --mail-type=ALL
 
 ###
 
 # Load necessary modules
-
+module load miniconda3/3.12
+conda activate R-4.4.3
 ###
 
 # Create some directories to keep track of which jobs fail

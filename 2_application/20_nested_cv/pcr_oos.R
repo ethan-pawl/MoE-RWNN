@@ -1,13 +1,5 @@
-proj_name <- "pcr_oos"
-
 library(flowmix) 
 library(magrittr)
-
-# Load training data
-load(file.path("2_application", 
-               "20_nested_cv", 
-               "folds", 
-               "in_sample_folds.RData"))
 
 # Take cross-validation settings from SLURM index
 args <- commandArgs(trailingOnly = TRUE)
@@ -42,57 +34,57 @@ max_prob_lambda <- 2
 names(ylist) <- 1:length(ylist)
 names(countslist) <- 1:length(countslist)
 
-# Select in-sample data for the current "held out" dataset
-subset_data <- function(in_sample_folds, fold_ind, X, ylist, countslist) {
-  in_sample <- in_sample_folds[[fold_ind]]
-  in_ind <- unlist(in_sample)
-
-  res <- list()
-  res$in_sample <- in_sample
-  res$X <- X[in_ind,]
-  res$ylist <- ylist[in_ind]
-  res$countslist <- countslist[in_ind]
-  
-  return(res)
-}
-
 jobs <- list()
-jobs$model <- c("linear", "nl")
-jobs$outer_fold <- 1:5
+jobs$n_PCs <- 9
+jobs$nh <- c("NA", "70")
+jobs$ofold <- 1:5
 
 simple_jobs <- expand.grid(jobs)
+simple_jobs$seed <- ifelse(simple_jobs$nh == "NA", "NA", "1")
+
+X_dir <- file.path(
+  "data", 
+  "X_variations"
+)
+
+load(file.path("data", "ofolds__ifolds__ifolds_inner_inds.Rdata"))
+
+load_X <- function(readdir, n_PCs = "NA", n_h = "NA", seed = "NA", ofold = "NA", ifold = "NA") {
+
+  file_name <- paste("X_pc", n_PCs, "nh", n_h, "seed", seed, "ofold", ofold, "ifold", ifold, sep = "_")
+  file_name <- paste0(file_name, ".RDS")
+  file_name <- file.path(readdir, file_name)
+
+  X <- readRDS(file_name)
+}
 
 # Perform the selected cross-validation step
 if(cv_step == "maxres") {
   job <- simple_jobs[arraynum,]
 
-  # Either way, loads in an object called X
-  load(file.path("data", 
-                 switch(job$model, 
-                        linear = "X_pc.Rdata", 
-                        nl = "X_nl.Rdata")))
+  # Folder to save results
+  destin <- file.path("2_application", 
+                      "20_nested_cv", 
+                      "results", 
+                      paste0("nh_", job$nh, "_seed_" job$seed, "_ofold_", job$ofold))
+
+  if(!dir.exists(destin)) dir.create(destin, recursive = TRUE)
   
+  # get_max_lambda with PC learned on all the data except the outer fold
+  X <- load_X(X_dir, n_PCs = job$n_PCs, n_h = job$nh, seed = job$seed, job$ofold)
+
   # The one_job function expects the data point indices 
   # from the original data set (not subsetted, like we are doing here), 
   # so we need to use the rownames to store the original indices.
   rownames(X) <- 1:nrow(X) 
 
-  # Folder to save results
-  destin <- file.path("2_application", 
-                      "20_nested_cv", 
-                      "results", 
-                      paste0(job$model, "_", job$outer_fold))
-    
-  if(!dir.exists(destin)) dir.create(destin, recursive = TRUE)
-
-  data_in <- subset_data(in_sample_folds, job$outer_fold, X, ylist, 
-                        countslist)
+  insample_inds <- unlist(ofolds[-job$ofold])
 
   maxres <- get_max_lambda(destin,
                           maxres_file = "maxres.Rdata",
-                          ylist = data_in$ylist,
-                          countslist = data_in$countslist,
-                          X = data_in$X,
+                          ylist = ylist[insample_inds],
+                          countslist = countslist[insample_inds],
+                          X = X[insample_inds,],
                           numclust = numclust,
                           maxdev = maxdev,
                           max_mean_lambda = max_mean_lambda,
@@ -110,6 +102,7 @@ if(cv_step == "maxres") {
   jobs$ifold <- 1:nfold
   jobs$irep <- 1:nrep
   job_grid <- expand.grid(jobs)
+  job_grid$seed <- ifelse(job_grid$nh == "NA", "NA", "1")
 
   orig_ylist <- ylist
   orig_countslist <- countslist
@@ -119,11 +112,7 @@ if(cv_step == "maxres") {
   for(j in -9:0 + 10 * arraynum) { 
     job <- job_grid[j,]
 
-     # Either way, loads in an object called X
-    load(file.path("data", 
-                   switch(job$model, 
-                          linear = "X_pc.Rdata", 
-                          nl = "X_nl.Rdata")))
+    X <- load_X(readdir, n_PCs = 9, n_h = job$nh, seed = job$seed, ofold = job$ofold, ifold = job$ifold)
 
     # The one_job function expects the data point indices 
     # from the original data set (not subsetted, like we are doing here), 
@@ -133,25 +122,25 @@ if(cv_step == "maxres") {
     destin <- file.path("2_application", 
                       "20_nested_cv", 
                       "results", 
-                      paste0(job$model, "_", job$outer_fold))
+                      paste0("nh_", job$nh, "_seed_" job$seed, "_ofold_", job$ofold))
 
     load(file.path(destin, "prob_lambdas.RData"))
     load(file.path(destin, "mean_lambdas.RData"))
 
-    data_in <- subset_data(in_sample_folds, job$outer_fold, X, orig_ylist, 
-                          orig_countslist)
-
     seedfile <- file.path("2_application", 
                           "20_nested_cv", 
                           "seedtabs", 
-                          paste0(proj_name, "_seedtab_", job$model, "_", job$outer_fold, ".csv"))
+                          paste0("seedtab_", job$nh, "_", job$ofold, ".csv"))
     seedtab <- read.csv(seedfile)
 
     # name objects properly before saving meta file
-    folds <- data_in$in_sample
-    ylist <- data_in$ylist
-    countslist <- data_in$countslist
-    X <- data_in$X
+    # TODO: check this
+    folds <- ifolds[[job$ofold]]
+
+    insample_inds <- unlist(ifolds[[job$ofold]][-job$ifold])
+    ylist <- ylist[insample_inds]
+    countslist <- countslist[insample_inds]
+    X <- X[insample_inds,]
 
     save(folds,
          nfold,
@@ -164,14 +153,14 @@ if(cv_step == "maxres") {
          X,
          file = file.path(destin, 'meta.Rdata'))
 
-    one_job(job$ialpha, 
-            job$ibeta, 
-            job$ifold, 
-            job$irep, 
-            folds, 
-            destin, 
-            mean_lambdas, 
-            prob_lambdas, 
+    one_job(ialpha = job$ialpha, 
+            ibeta = job$ibeta, 
+            ifold = job$ifold, 
+            irep = job$irep, 
+            folds = folds, 
+            destin = destin, 
+            mean_lambdas = mean_lambdas, 
+            prob_lambdas = prob_lambdas, 
             numclust = numclust,
             maxdev = maxdev,
             sim = FALSE, 
@@ -186,12 +175,10 @@ if(cv_step == "maxres") {
   jobs$ialpha <- jobs$ibeta <- 1:cv_gridsize
   job_grid <- expand.grid(jobs)
   job <- job_grid[arraynum,]
+  job_grid$seed <- ifelse(job_grid$nh == "NA", "NA", "1")
 
   # Either way, loads in an object called X
-  load(file.path("data", 
-                 switch(job$model, 
-                        linear = "X_pc.Rdata", 
-                        nl = "X_nl.Rdata")))
+  X <- load_X(readdir, n_PCs = 9, n_h = job$nh, seed = job$seed, ofold = job$ofold)
 
   # The one_job function expects the data point indices 
   # from the original data set (not subsetted, like we are doing here), 
@@ -201,32 +188,31 @@ if(cv_step == "maxres") {
   destin <- file.path("2_application", 
                       "20_nested_cv", 
                       "results", 
-                      paste0(job$model, "_", job$outer_fold))
+                      paste0("nh_", job$nh, "_seed_" job$seed, "_ofold_", job$ofold))
 
   load(file.path(destin, "prob_lambdas.RData"))
   load(file.path(destin, "mean_lambdas.RData"))
 
-  data_in <- subset_data(in_sample_folds, job$outer_fold, X, ylist, 
-                        countslist)
-
   seedfile <- file.path("2_application", 
                         "20_nested_cv", 
                         "seedtabs", 
-                        paste0(proj_name, "_seedtab_", job$model, "_", job$outer_fold, ".csv"))
+                        paste0("seedtab_", job$nh, "_", job$ofold, ".csv"))
   seedtab <- read.csv(seedfile)
 
-  one_job_refit(job$ialpha,
-                job$ibeta, 
-                destin, 
-                mean_lambdas, 
-                prob_lambdas, 
+  insample_inds <- unlist(ofolds[-job$ofold])
+
+  one_job_refit(ialpha = job$ialpha,
+                ibeta = job$ibeta, 
+                destin = destin, 
+                mean_lambdas = mean_lambdas, 
+                prob_lambdas = prob_lambdas, 
                 nrep = nrep, 
                 numclust = numclust,
                 maxdev = maxdev,
                 seedtab = seedtab, 
-                ylist = data_in$ylist, 
-                countslist = data_in$countslist, 
-                X = data_in$X, 
+                ylist = ylist[insample_inds], 
+                countslist = countslist[insample_inds], 
+                X = X[insample_inds], 
                 verbose = TRUE)
 } else if(cv_step == "summary") {
   job <- simple_jobs[arraynum,]
@@ -234,9 +220,9 @@ if(cv_step == "maxres") {
   destin <- file.path("2_application", 
                       "20_nested_cv", 
                       "results", 
-                      paste0(job$model, "_", job$outer_fold))
+                      paste0("nh_", job$nh, "_seed_" job$seed, "_ofold_", job$ofold))
 
   cv_summary(destin = destin,
              save = TRUE,
-             filename = paste0(proj_name, "_", job$model, "_", job$outer_fold, ".RDS"))
+             filename = paste0("nh_", job$nh, "_seed_" job$seed, "_ofold_", job$ofold, ".RDS"))
 }
