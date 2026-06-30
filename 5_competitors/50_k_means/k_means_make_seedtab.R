@@ -9,7 +9,7 @@ nrep <- 10
 nrows <- cv_gridsize * nfold * nrep
 
 ## Generate all the seeds
-seedfile <- file.path("5_competitors", "k_means", "seedtab.csv")
+seedfile <- file.path("5_competitors", "50_k_means", "seedtab.csv")
 
 ## Make sure the seeds have not already been generated.
 if(file.exists(seedfile)) {

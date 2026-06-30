@@ -18,10 +18,10 @@ datobj %>% list2env(envir = .GlobalEnv) %>% invisible()
 
 TT <- length(ylist)
 
-seedfile <- file.path("5_competitors", "k_means", "seedtab.csv")
+seedfile <- file.path("5_competitors", "50_k_means", "seedtab.csv")
 seedtab <- read.csv(seedfile)
 
-kmeans_file <- file.path("5_competitors", "k_means", "best_kmeans__scores.Rdata")
+kmeans_file <- file.path("5_competitors", "50_k_means", "best_kmeans__scores.Rdata")
 if(!file.exists(kmeans_file)) {
   best_kmeans <- vector("list", TT)
   scores <- numeric(TT)
@@ -99,7 +99,7 @@ for(tt in 2:TT) {
   best_kmeans[[tt]]$cluster <- best_kmeans[[tt]]$cluster |> recode_values(from = 1:K, to = cur_samp_labels)
 }
 
-save(best_kmeans, scores, file = file.path("5_competitors", "k_means", "best_kmeans__scores-matched.Rdata"))
+save(best_kmeans, scores, file = file.path("5_competitors", "50_k_means", "best_kmeans__scores-matched.Rdata"))
 
 means_probs_df <- lapply(1:TT, function(tt) {
   data.frame(
@@ -152,11 +152,11 @@ if(plot_animation) {
     transition_time(time)
 
   animation_rendered <- animate(animation, width = 1080, height = 1080, res = 300, type = "cairo", 
-    nframes = TT, renderer = gifski_renderer(file.path("5_competitors", "k_means", "plots", "res_v01.gif")))
+    nframes = TT, renderer = gifski_renderer(file.path("5_competitors", "50_k_means", "plots", "res_v01.gif")))
 
   # Save each file
   frames <- animate(animation, width = 1080, height = 1080, res = 300, type = "cairo", nframes = TT, 
-    renderer = file_renderer("5_competitors/k_means/plots/frames", prefix = "res_v01", overwrite = TRUE)
+    renderer = file_renderer("5_competitors/50_k_means/plots/frames", prefix = "res_v01", overwrite = TRUE)
   )
 }
 
