@@ -11,3 +11,5 @@ data/X_variations
 3_seedsim/results
 4_3dsim/results
 logs
+5_competitors/k_means/plots
+5_competitors/k_means/*.Rdata
