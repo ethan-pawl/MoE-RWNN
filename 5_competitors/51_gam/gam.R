@@ -28,29 +28,29 @@ library(mgcv)
 
 # Replicate x_t for every t to get a tabular dataset
 
-data_long <- lapply(seq_along(time), function(tt) {
-  cur_y <- ylist[[tt]]
-  nt <- nrow(cur_y)
+# data_long <- lapply(seq_along(time), function(tt) {
+#   cur_y <- ylist[[tt]]
+#   nt <- nrow(cur_y)
 
-  which_covs <- 3:ncol(X)
-  xt_mat <- matrix(rep(X[tt,which_covs], each = nt), nt)
-  colnames(xt_mat) <- colnames(X)[which_covs]
+#   which_covs <- 3:ncol(X)
+#   xt_mat <- matrix(rep(X[tt,which_covs], each = nt), nt)
+#   colnames(xt_mat) <- colnames(X)[which_covs]
   
-  res <- cbind(cur_y, xt_mat) |> 
-    as.data.frame()
+#   res <- cbind(cur_y, xt_mat) |> 
+#     as.data.frame()
   
-  return(res)
-}) %>% bind_rows()
+#   return(res)
+# }) %>% bind_rows()
 
-head(data_long)
+# # head(data_long)
 
-counts_long <- unlist(unname(countslist))
+# counts_long <- unlist(unname(countslist))
 
-rhs <- paste0("s(", colnames(data_long)[4:ncol(data_long)], ")") |> 
-  paste(collapse = " + ")
+# rhs <- paste0("s(", colnames(data_long)[4:ncol(data_long)], ")") |> 
+#   paste(collapse = " + ")
 
-diam_formula <- paste0("diam_mid", " ~ ", rhs) |> 
-  as.formula()
+# diam_formula <- paste0("diam_mid", " ~ ", rhs) |> 
+#   as.formula()
 
 # FIXME: this crashes
 # diam_gam_1 <- gam(
@@ -64,17 +64,11 @@ diam_formula <- paste0("diam_mid", " ~ ", rhs) |>
 # TODO: use mvn instead for multivariate 
 # responses
 
-rhs_2 <- paste0("s(", colnames(data_long)[4:ncol(data_long)], ", bs = \"cc\")") |> 
-  paste(collapse = " + ")
+# rhs_2 <- paste0("s(", colnames(data_long)[4:ncol(data_long)], ", bs = \"cc\")") |> 
+#   paste(collapse = " + ")
 
-diam_formula_2 <- paste0("diam_mid", " ~ ", rhs_2) |> 
-  as.formula()
-
-rhs_3 <- paste0("s(", colnames(data_long)[4:ncol(data_long)], ", bs = \"cs\")") |> 
-  paste(collapse = " + ")
-
-diam_formula_3 <- paste0("diam_mid", " ~ ", rhs_3) |> 
-  as.formula()
+# diam_formula_2 <- paste0("diam_mid", " ~ ", rhs_2) |> 
+#   as.formula()
 
 # print("TPRS Time:")
 # system.time({
@@ -110,11 +104,11 @@ diam_formula_3 <- paste0("diam_mid", " ~ ", rhs_3) |>
 # to go
 
 # Move to multivariate, see if feasible
-chl_formula_2 <- paste0("chl_small", " ~ ", rhs_2) |> 
-  as.formula()
+# chl_formula_2 <- paste0("chl_small", " ~ ", rhs_2) |> 
+#   as.formula()
 
-pe_formula_2 <- paste0("pe", " ~ ", rhs_2) |> 
-  as.formula()
+# pe_formula_2 <- paste0("pe", " ~ ", rhs_2) |> 
+#   as.formula()
 
 # # TODO: split into each cluster
 # print("Multivariate Cyclic Cubic Spline Time:")
@@ -148,35 +142,54 @@ data_long <- lapply(seq_along(time), function(tt) {
   return(res)
 }) %>% bind_rows()
 
-data_long$Cluster <- factor(data_long$Cluster)
 head(data_long)
 
 data_long_by_clust_list <- data_long |> 
   group_by(Cluster) |> 
-  group_split()
+  group_split(.keep = FALSE)
 
-RhpcBLASctl::blas_set_num_threads(1)
+# Last two columns are Weight and Cluster; we don't want these as covariates
+rhs <- paste0("s(", colnames(data_long)[4:(ncol(data_long) - 2)], ", bs = \"cs\")") |> 
+  paste(collapse = " + ")
+
+diam_formula <- paste0("diam_mid", " ~ ", rhs) |> 
+  as.formula()
+
+chl_formula <- paste0("chl_small", " ~ ", rhs) |> 
+  as.formula()
+
+pe_formula <- paste0("pe", " ~ ", rhs) |> 
+  as.formula()
+
 system.time({
-  per_cluster_res <- parallel::mclapply(data_long_by_clust_list, function(cur_data_long) {
+  per_cluster_res <- lapply(data_long_by_clust_list, function(cur_data_long) {
     cur_diam_gam <- bam(
-      diam_formula_3, 
+      diam_formula, 
       data = cur_data_long, 
       weights = Weight, 
-      select = TRUE, 
+      select = TRUE, # Seems to fix numerical instabilities
       gamma = 1
     )
 
     return(cur_diam_gam)
-  }, mc.cores = 1, mc.preschedule = FALSE)
+  })
 })
-# select = TRUE seems to fix this
+
+saveRDS(per_cluster_res, file.path("5_competitors", "51_gam", "bam_res.RDS"))
+
+# TODO: for fixed gamma, make the relevant plots
+# TODO: decide what the relevant plots are
+# This depends on what the model results are
+# I need to know what the weaknesses are
+
+# TODO: plot clustering over time
+# TODO: plot mean responses over time
+
+# TODO: first, get the data into the correct format to use preexisting plotting functions
+# TODO: check which plotting functions I use
+
+# TODO: author says we should beat at least in a simulation setting
+# TODO: redo this with the 3D simulation
+
 # TODO: cross-validate over gamma
-
-cur_data_long <- data_long_by_clust_list[[1]]
-head(cur_data_long)
-
-# TODO: for fixed gamma, make the relevant 
-# plots
-
-# TODO: also try per-cluster multivariate 
-# plots
+# TODO: try throwing away weights and using mvn with gam

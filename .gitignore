@@ -13,3 +13,4 @@ data/X_variations
 logs
 5_competitors/50_k_means/plots
 5_competitors/50_k_means/*.Rdata
+5_competitors/51_gam/*.RDS
