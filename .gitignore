@@ -21,3 +21,7 @@ logs
 5_competitors/51_real/510_k_means/plots
 5_competitors/51_real/510_k_means/*.Rdata
 5_competitors/51_real/511_gam/*.RDS
+5_competitors/50_sim/502_rf/sidcluster-matched.Rdata
+5_competitors/50_sim/502_rf/plots
+5_competitors/50_sim/502_rf/*.RDS
+5_competitors/50_sim/502_rf/plots_reg 
