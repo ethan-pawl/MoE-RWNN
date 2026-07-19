@@ -1,4 +1,4 @@
-library(randomForestSRC)
+library(mixdistreg)
 library(dplyr)
 library(RColorBrewer)
 library(ggplot2)
@@ -67,6 +67,50 @@ ybin_list <- lapply(seq_along(ybin_list), function(tt) {
 ### 
 
 # TODO: write code to fit mixdistreg
+# TODO: loop over response dimension
+mdr_res <- mixdistreg(
+  y,
+  families = "normal",
+  nr_comps = 2L,
+  list_of_formulas, # for each expert, formula for loc and scale
+  formula_mixture = ~1, # mixture probabilities model
+  list_of_deep_models = NULL, # See deepregression
+  data
+)
+
+# 
+# n <- 1000
+# data = data.frame(matrix(rnorm(4*n), c(n,4)))
+# colnames(data) <- c("x1","x2","x3","xa")
+# formula <- ~ 1 + deep_model(x1,x2,x3) + s(xa) + x1
+
+# deep_model <- function(x) x %>%
+# layer_dense(units = 32, activation = "relu", use_bias = FALSE) %>%
+# layer_dropout(rate = 0.2) %>%
+# layer_dense(units = 8, activation = "relu") %>%
+# layer_dense(units = 1, activation = "linear")
+
+# y <- rnorm(n) + data$xa^2 + data$x1
+
+# mod <- mixdistreg(
+#   families = c("normal", "student_t"),
+#   list_of_formulas = list(
+#     loc = formula, scale = ~ 1, 
+#     df = formula
+#     ),
+   
+#   formula_mixture = ~ 1 + x1,
+#   data = data, 
+#   y = y,
+#   list_of_deep_models = list(deep_model = deep_model),
+#   inflation_values = NULL,
+#   optimizer = optimizer_adam(learning_rate=1e-6)
+# )
+
+# if(!is.null(mod)){
+
+# # train for more than 10 epochs to get a better model
+# mod %>% fit(epochs = 10, early_stopping = TRUE)
 
 ###
 

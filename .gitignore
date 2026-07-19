@@ -12,6 +12,7 @@ data/X_variations
 4_3dsim/results
 4_3dsim/3dsimdata
 logs
+5_competitors/bg_papers
 5_competitors/50_sim/500_k_means/plots
 5_competitors/50_sim/500_k_means/*.Rdata
 5_competitors/50_sim/500_k_means/k_means_check_params.R
@@ -25,3 +26,4 @@ logs
 5_competitors/50_sim/502_rf/plots
 5_competitors/50_sim/502_rf/*.RDS
 5_competitors/50_sim/502_rf/plots_reg 
+5_competitors/50_sim/504_gphme/GP-HME-main
