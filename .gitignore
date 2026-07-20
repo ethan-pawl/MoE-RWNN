@@ -28,3 +28,7 @@ logs
 5_competitors/50_sim/502_rf/plots_reg 
 5_competitors/50_sim/504_gphme/GP-HME-main
 5_competitors/50_sim/505_gadd/MixtureOfExperts-master
+5_competitors/50_sim/506_rf_wts/sidcluster-matched.Rdata
+5_competitors/50_sim/506_rf_wts/plots
+5_competitors/50_sim/506_rf_wts/*.RDS
+5_competitors/50_sim/506_rf_wts/plots_reg 

@@ -75,7 +75,7 @@ if(!file.exists(match_file) | rerun_clustering_and_matching) {
     sidClustering(
       ybin_list[[tt]], 
       k = 2, 
-      # case.wt = Weight, # TODO: rerun with this option!
+      case.wt = countslist[[tt]], 
       reduce = FALSE
     )$clustering
   })
@@ -236,7 +236,7 @@ if(!file.exists(rf_res_file) | rerun_regression) {
     clust_rf_res <- rfsrc.fast(
       cbind(y1, y2, y3) ~ . - Time - Weight,
       data = cur_data_long,
-      # case.wt = Weight, # TODO: rerun with this option!
+      case.wt = cur_data_long$Weight, 
       forest = TRUE,
       do.trace = 5
     )
@@ -249,7 +249,7 @@ if(!file.exists(rf_res_file) | rerun_regression) {
   rf_res <- readRDS(rf_res_file)
 }
 
-# Analyze the resutls
+# Analyze the results
 TT <- length(ybin_list)
 d <- ncol(ybin_list[[1]])
 K <- length(rf_res)
@@ -385,11 +385,6 @@ if(plot_regression_animation) {
     dev.off()
   }
 
-  # memory cache exhausted; try to rerun
-  # imgs <- image_read(list.files(file.path("5_competitors", "50_sim", "501_gam", "plots", "frames"), full.names = TRUE))
-  # gif <- image_animate(imgs, fps = 10)
-  # image_write(gif, "animation.gif")
-
   gifski(
     list.files(frames_path, full.names = TRUE),
     gif_file = file.path(plots_path, "animation.gif"),
@@ -475,12 +470,13 @@ resid_dotprods <- apply(resids, 3, function(x) {
   crossprod(as.vector(t(x)))
 })
 
+# TODO: update these values
 rmse <- sqrt(resid_dotprods / TT)
-rmse # [1] 0.2100563 0.2235552
-sum(rmse) # [1] 0.4336115
+rmse # [1] 0.2073716 0.2764358
+sum(rmse) # [1] 0.4838074
 
 prob_rmse <- sqrt(mean((prob1_true - prob[,1])^2))
-prob_rmse # [1] 0.309612
+prob_rmse # [1] 0.3337359
 
 # FIXME: there are two different kinds of covariance estimates
 #   1. Estimate of the error covariance structure
