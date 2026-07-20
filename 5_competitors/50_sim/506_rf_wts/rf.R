@@ -1,4 +1,7 @@
-library(mixdistreg)
+# TODO: rerun with weights
+# TODO: double-check filepaths
+
+library(randomForestSRC)
 library(dplyr)
 library(RColorBrewer)
 library(ggplot2)
@@ -8,7 +11,7 @@ library(ggrepel)
 library(tidyr)
 
 rerun_clustering_and_matching <- FALSE
-plot_animation <- TRUE
+plot_animation <- FALSE
 rerun_regression <- FALSE
 plot_regression_animation <- TRUE
 plot_mean_responses <- TRUE
@@ -64,80 +67,17 @@ ybin_list <- lapply(seq_along(ybin_list), function(tt) {
   return(cur_y)
 })
 
-data_long <- lapply(seq_along(ybin_list), function(tt) {
-  cur_y <- ybin_list[[tt]]
-  nt <- nrow(cur_y)
-
-  which_covs <- 3:ncol(X)
-  xt_mat <- matrix(rep(X[tt,which_covs], each = nt), nt)
-  colnames(xt_mat) <- colnames(X)[which_covs]
-
-  Weight <- countslist[[tt]]
-  Cluster <- clust_res[[tt]]
-  Time <- tt
-  res <- cbind(cur_y, xt_mat, Weight, Cluster, Time) |> 
-    as.data.frame()
-  
-  return(res)
-}) %>% bind_rows()
-
-### 
-
-# TODO: write code to fit mixdistreg
-# TODO: loop over response dimension
-mdr_res <- mixdistreg(
-  y,
-  families = "normal",
-  nr_comps = 2L,
-  list_of_formulas, # for each expert, formula for loc and scale
-  formula_mixture = ~1, # mixture probabilities model
-  list_of_deep_models = NULL, # See deepregression
-  weights = Weight,
-  data
-)
-
-# 
-# n <- 1000
-# data = data.frame(matrix(rnorm(4*n), c(n,4)))
-# colnames(data) <- c("x1","x2","x3","xa")
-# formula <- ~ 1 + deep_model(x1,x2,x3) + s(xa) + x1
-
-# deep_model <- function(x) x %>%
-# layer_dense(units = 32, activation = "relu", use_bias = FALSE) %>%
-# layer_dropout(rate = 0.2) %>%
-# layer_dense(units = 8, activation = "relu") %>%
-# layer_dense(units = 1, activation = "linear")
-
-# y <- rnorm(n) + data$xa^2 + data$x1
-
-# mod <- mixdistreg(
-#   families = c("normal", "student_t"),
-#   list_of_formulas = list(
-#     loc = formula, scale = ~ 1, 
-#     df = formula
-#     ),
-   
-#   formula_mixture = ~ 1 + x1,
-#   data = data, 
-#   y = y,
-#   list_of_deep_models = list(deep_model = deep_model),
-#   inflation_values = NULL,
-#   optimizer = optimizer_adam(learning_rate=1e-6)
-# )
-
-# if(!is.null(mod)){
-
-# # train for more than 10 epochs to get a better model
-# mod %>% fit(epochs = 10, early_stopping = TRUE)
-
-###
-
-match_file <- file.path("5_competitors", "50_sim", "502_rf", "sidcluster-matched.Rdata")
+match_file <- file.path("5_competitors", "50_sim", "506_rf_wts", "sidcluster-matched.Rdata")
 if(!file.exists(match_file) | rerun_clustering_and_matching) {
   set.seed(0)
   clust_res <- lapply(seq_along(ybin_list), function(tt) {
     print(tt)
-    sidClustering(ybin_list[[tt]], k = 2, reduce = FALSE)$clustering
+    sidClustering(
+      ybin_list[[tt]], 
+      k = 2, 
+      # case.wt = Weight, # TODO: rerun with this option!
+      reduce = FALSE
+    )$clustering
   })
 
   # Output is a length TT list of length nt vectors of cluster assignments
@@ -229,7 +169,7 @@ if(plot_animation) {
       scale_size_continuous(range = c(0, 4))
 
     plots_path <- file.path(
-      "5_competitors", "50_sim", "502_rf", "plots"
+      "5_competitors", "50_sim", "506_rf_wts", "plots"
     )
 
     frames_path <- file.path(
@@ -284,7 +224,7 @@ data_long_by_clust_list <- data_long |>
   group_split(.keep = FALSE)
 
 # TODO: try fast variant because this takes a long time
-rf_res_file <- file.path("5_competitors", "50_sim", "502_rf", "rf_res.RDS")
+rf_res_file <- file.path("5_competitors", "50_sim", "506_rf_wts", "rf_res.RDS")
 if(!file.exists(rf_res_file) | rerun_regression) {
   # Regress each cluster on covariates using multivariate random forests
   # Multithreading is too memory-intensive
@@ -296,6 +236,7 @@ if(!file.exists(rf_res_file) | rerun_regression) {
     clust_rf_res <- rfsrc.fast(
       cbind(y1, y2, y3) ~ . - Time - Weight,
       data = cur_data_long,
+      # case.wt = Weight, # TODO: rerun with this option!
       forest = TRUE,
       do.trace = 5
     )
@@ -314,11 +255,22 @@ d <- ncol(ybin_list[[1]])
 K <- length(rf_res)
 
 mn_fit <- array(NA, c(TT, d, K))
+Time <- rep(1, 296)
+Weight <- rep(1, 296)
 for(k in 1:K) {
-  mn_fit[,,k] <- predict(
+  cur_preds <- predict(
     rf_res[[k]],
-    newdata = X_df, 
-    type = "response"
+    newdata = cbind(X_df, Time, Weight)
+  )
+
+  # str(cur_preds, max.level = 1)
+  # str(cur_preds$regrOutput, max.level = 1)
+  # str(cur_preds$regrOutput$y1, max.level = 1)
+
+  mn_fit[,,k] <- cbind(
+    cur_preds$regrOutput$y1$predicted,
+    cur_preds$regrOutput$y2$predicted,
+    cur_preds$regrOutput$y3$predicted
   )
 }
 
@@ -346,7 +298,7 @@ ylist_df <- lapply(1:TT, function(tt) {
   cur_ylist_df <- cbind(cur_ylist_df, countslist[[tt]])
   colnames(cur_ylist_df) <- c("y1", "y2", "y3", "Bin_Biomass")# , "Cluster Membership") # No ground truth here
   cur_ylist_df$time <- tt
-  cur_ylist_df$cluster <- factor(best_kmeans[[tt]]$cluster)
+  cur_ylist_df$cluster <- factor(clust_res[[tt]])
 
   cur_ylist_df 
 }) |> bind_rows()
@@ -354,7 +306,7 @@ ylist_df <- lapply(1:TT, function(tt) {
 if(plot_regression_animation) {
   
   plots_path <- file.path(
-    "5_competitors", "50_sim", "502_rf", "plots_reg"
+    "5_competitors", "50_sim", "506_rf_wts", "plots_reg"
   )
 
   frames_path <- file.path(plots_path, "frames")
@@ -524,21 +476,26 @@ resid_dotprods <- apply(resids, 3, function(x) {
 })
 
 rmse <- sqrt(resid_dotprods / TT)
-rmse # [1] 0.3105756 0.3494847
-sum(rmse) # [1] 0.6600603
+rmse # [1] 0.2100563 0.2235552
+sum(rmse) # [1] 0.4336115
 
 prob_rmse <- sqrt(mean((prob1_true - prob[,1])^2))
-prob_rmse # 0.318073
+prob_rmse # [1] 0.309612
 
-# Covariance estimates would be a diagonal matrix
-cov_fit <- sapply(1:K, function(k) {
-  sapply(1:d, function(j) {
-    per_cluster_res[[j]][[k]]$sig2
-  }) |> diag()
-}, simplify = "array")
+# FIXME: there are two different kinds of covariance estimates
+#   1. Estimate of the error covariance structure
+#   2. Covariance of the residuals
+# The RF is non-probabilistic, so it does not provide (1)
+# but I can always get (2)
 
-cov_err <- sapply(1:K, function(k) {
-  sqrt(sum((cov_true[,,k] - cov_fit[,,k])^2))
-})
-cov_err
-# [1] 0.02451901 0.03528520
+resid_cov <- array(NA, c(d, d, K))
+for(k in 1:K) {
+  clust_resid <- lapply(1:TT, function(tt) {
+    t(t(ybin_list[[tt]][clust_res[[tt]] == k,]) - mn_fit[tt,,k]) # Transpose to recycle across columns, then tranpose back to maintain order
+  }) %>% do.call(rbind, .)
+
+  resid_cov[,,k] <- cov(clust_resid)  
+}
+resid_cov
+
+# TODO: may need to fit linear model on 3d simulation (do this if time)

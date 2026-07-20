@@ -80,7 +80,12 @@ if(!file.exists(match_file) | rerun_clustering_and_matching) {
   set.seed(0)
   clust_res <- lapply(seq_along(ybin_list), function(tt) {
     print(tt)
-    sidClustering(ybin_list[[tt]], k = 2, reduce = FALSE)$clustering
+    sidClustering(
+      ybin_list[[tt]], 
+      k = 2, 
+      # case.wt = Weight, # TODO: rerun with this option!
+      reduce = FALSE
+    )$clustering
   })
 
   # Output is a length TT list of length nt vectors of cluster assignments
@@ -239,6 +244,7 @@ if(!file.exists(rf_res_file) | rerun_regression) {
     clust_rf_res <- rfsrc.fast(
       cbind(y1, y2, y3) ~ . - Time - Weight,
       data = cur_data_long,
+      # case.wt = Weight, # TODO: rerun with this option!
       forest = TRUE,
       do.trace = 5
     )
