@@ -73,9 +73,8 @@ data_long <- lapply(seq_along(ybin_list), function(tt) {
   colnames(xt_mat) <- colnames(X)[which_covs]
 
   Weight <- countslist[[tt]]
-  Cluster <- clust_res[[tt]]
   Time <- tt
-  res <- cbind(cur_y, xt_mat, Weight, Cluster, Time) |> 
+  res <- cbind(cur_y, xt_mat, Weight, Time) |> 
     as.data.frame()
   
   return(res)
@@ -85,230 +84,71 @@ data_long <- lapply(seq_along(ybin_list), function(tt) {
 
 # TODO: write code to fit mixdistreg
 # TODO: loop over response dimension
-mdr_res <- mixdistreg(
-  y,
+
+deep_model <- function(x) {
+  x %>%
+    layer_dense(
+      units = 64,
+      activation = "relu",
+      kernel_regularizer = regularizer_l2(1e-4)
+    ) %>%
+    layer_dense(
+      units = 64,
+      activation = "relu",
+      kernel_regularizer = regularizer_l2(1e-4)
+    ) %>%
+    layer_dense(
+      units = 1,
+      activation = "linear"
+    )
+}
+
+y1_formula_str <- paste0("~ 1 + deep_model(", paste(colnames(data_long[,4:(ncol(data_long) - 2)]), collapse = ","), ")")
+y1_formula <- as.formula(y1_formula_str)
+
+y1_mod <- mixdistreg(
+  data_long$y1,
   families = "normal",
   nr_comps = 2L,
-  list_of_formulas, # for each expert, formula for loc and scale
-  formula_mixture = ~1, # mixture probabilities model
-  list_of_deep_models = NULL, # See deepregression
-  weights = Weight,
-  data
+  list_of_formulas = list(
+    loc_1 = y1_formula, scale_1 = ~ 1, 
+    loc_2 = y1_formula, scale_2 = ~ 1
+  ),
+  trafos_each_param = list(
+    list(
+      function(x) x,
+      function(x) tf$exp(x)
+    ),
+    list(
+      function(x) x,
+      function(x) tf$exp(x)
+    )
+  ),
+  formula_mixture = y1_formula,
+  list_of_deep_models = list(deep_model = deep_model),
+  data = data_long, 
+  optimizer = optimizer_adam()
 )
 
-# 
-# n <- 1000
-# data = data.frame(matrix(rnorm(4*n), c(n,4)))
-# colnames(data) <- c("x1","x2","x3","xa")
-# formula <- ~ 1 + deep_model(x1,x2,x3) + s(xa) + x1
+RhpcBLASctl::omp_set_num_threads(1L)
+RhpcBLASctl::blas_set_num_threads(1L)
 
-# deep_model <- function(x) x %>%
-# layer_dense(units = 32, activation = "relu", use_bias = FALSE) %>%
-# layer_dropout(rate = 0.2) %>%
-# layer_dense(units = 8, activation = "relu") %>%
-# layer_dense(units = 1, activation = "linear")
 
-# y <- rnorm(n) + data$xa^2 + data$x1
-
-# mod <- mixdistreg(
-#   families = c("normal", "student_t"),
-#   list_of_formulas = list(
-#     loc = formula, scale = ~ 1, 
-#     df = formula
-#     ),
-   
-#   formula_mixture = ~ 1 + x1,
-#   data = data, 
-#   y = y,
-#   list_of_deep_models = list(deep_model = deep_model),
-#   inflation_values = NULL,
-#   optimizer = optimizer_adam(learning_rate=1e-6)
-# )
-
-# if(!is.null(mod)){
-
-# # train for more than 10 epochs to get a better model
-# mod %>% fit(epochs = 10, early_stopping = TRUE)
-
-###
-
-match_file <- file.path("5_competitors", "50_sim", "502_rf", "sidcluster-matched.Rdata")
-if(!file.exists(match_file) | rerun_clustering_and_matching) {
-  set.seed(0)
-  clust_res <- lapply(seq_along(ybin_list), function(tt) {
-    print(tt)
-    sidClustering(ybin_list[[tt]], k = 2, reduce = FALSE)$clustering
-  })
-
-  # Output is a length TT list of length nt vectors of cluster assignments
-  TT <- length(ybin_list)
-  K <- 2
-
-  # Match clusters across time
-  # Use flowMatch helper functions to match clusters
-  for(tt in 2:TT) {
-    print(tt)
-    prev_samp <- flowMatch::ClusteredSample(labels = clust_res[[tt-1]], sample = ybin_list[[tt-1]])
-    cur_samp <- flowMatch::ClusteredSample(labels = clust_res[[tt]], sample = ybin_list[[tt]])
-    
-    D <- flowMatch::dist.matrix(prev_samp, cur_samp, dist.type = "KL")
-    rownames(D) <- colnames(D) <- as.character(1:K)
-
-    # # Use the Hungarian algorithm to find the lowest total KL-divergence cluster match 
-    # # (I don't use this because solution is pretty nonsensical)
-    # solution <- RcppHungarian::HungarianSolver(D)
-    # cur_samp_labels <- solution$pairs[,2][solution$pairs[,1]]
-
-    # TODO: if time, try minimax instead of minimin
-    cur_samp_labels <- integer(K)
-    for(k in 1:K) {
-      # Greedily match clusters based on minimal KL divergence
-      min_ind <- which.min(D) |> arrayInd(dim(D))
-      cur_samp_labels[as.integer(colnames(D)[min_ind[,2]])] <- as.integer(rownames(D)[min_ind[,1]])
-      D <- D[-min_ind[,1],-min_ind[,2], drop = FALSE]
-    }
-
-    reordering <- order(cur_samp_labels)
-    clust_res[[tt]] <- clust_res[[tt]] |> recode_values(from = 1:K, to = cur_samp_labels)
-  }
-
-  save(clust_res, file = match_file)
-} else {
-  load(match_file)
-}
-
-# Check clustering
-
-ylist_df <- lapply(seq_along(ybin_list), function(tt) {
-  cur_ylist_df <- ybin_list[[tt]] |> as.data.frame()
-  cur_ylist_df <- cbind(cur_ylist_df, countslist[[tt]])
-  colnames(cur_ylist_df) <- c("y1", "y2", "y3", "Bin_Biomass")# , "Cluster Membership") # No ground truth here
-  cur_ylist_df$time <- tt
-  cur_ylist_df$cluster <- factor(clust_res[[tt]])
-
-  cur_ylist_df 
-}) |> bind_rows()
-
-if(plot_animation) {
-  
-  y1_breaks <- seq(0, 2.5, 0.5)
-  y2_breaks <- seq(0.75, 2.25, 0.5)
-  y3_breaks <- seq(0.25, 2.75, 0.5)
-
-  set1 <- brewer.pal(3, "Set1")
-
-  for(tt in 1:TT) {
-    cur_ylist_df <- subset(ylist_df, time == tt)
-
-    p1 <- ggplot(cur_ylist_df) +
-      geom_tile(aes(y1, y2, alpha = Bin_Biomass, fill = cluster)) + 
-      scale_x_continuous(breaks = y1_breaks) + 
-      scale_y_continuous(breaks = y2_breaks) + 
-      coord_cartesian(xlim = range(y1_breaks), ylim = range(y2_breaks)) + 
-      scale_fill_manual(values = c(set1, "black")) + 
-      scale_alpha_continuous(range = c(0.2, 1)) + 
-      theme_gray(base_family = "sans") + 
-      theme(axis.title = element_text(size = 8), plot.title = element_text(size = 10), 
-        axis.text = element_text(size = 6), legend.position = "none", 
-        axis.line = element_line(linewidth = 0.25)
-      ) + 
-      scale_size_continuous(range = c(0, 4)) 
-  
-    p2 <- ggplot(cur_ylist_df) +
-      geom_tile(aes(y2, y3, alpha = Bin_Biomass, fill = cluster)) + 
-      scale_x_continuous(breaks = y2_breaks) + 
-      scale_y_continuous(breaks = y3_breaks) + 
-      coord_cartesian(xlim = range(y2_breaks), ylim = range(y3_breaks)) + 
-      scale_fill_manual(values = c(set1, "black")) + 
-      scale_alpha_continuous(range = c(0.2, 1)) + 
-      theme_gray(base_family = "sans") + 
-      theme(axis.title = element_text(size = 8), plot.title = element_text(size = 10), 
-        axis.text = element_text(size = 6), legend.position = "none", 
-        axis.line = element_line(linewidth = 0.25)
-      ) + 
-      scale_size_continuous(range = c(0, 4))
-
-    plots_path <- file.path(
-      "5_competitors", "50_sim", "502_rf", "plots"
+history <- y1_mod %>% fit(
+  epochs = 500,
+  early_stopping = TRUE, 
+  sample_weight = data_long$Weight, 
+  batch_size = 512, 
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 10,
+      restore_best_weights = TRUE
     )
-
-    frames_path <- file.path(
-      plots_path, "frames"
-    )
-
-    if(!dir.exists(frames_path)) dir.create(frames_path, recursive = TRUE)
-
-    png(
-      sprintf(
-        file.path(frames_path, "frame_%04d.png"), 
-        tt
-      ), width = 1080, height = 540, res = 80, type = "cairo")
-
-    grid.arrange(
-      p1, p2,
-      ncol = 2,
-      top = sprintf("Time %d", tt)
-    )
-
-    graphics.off()
-  }
-
-  gifski(
-    list.files(frames_path, full.names = TRUE),
-    gif_file = file.path(plots_path, "animation.gif"),
-    width = 1080,
-    height = 540,
-    delay = 1 / 10
   )
-}
+)
 
-data_long <- lapply(seq_along(ybin_list), function(tt) {
-  cur_y <- ybin_list[[tt]]
-  nt <- nrow(cur_y)
-
-  which_covs <- 3:ncol(X)
-  xt_mat <- matrix(rep(X[tt,which_covs], each = nt), nt)
-  colnames(xt_mat) <- colnames(X)[which_covs]
-
-  Weight <- countslist[[tt]]
-  Cluster <- clust_res[[tt]]
-  Time <- tt
-  res <- cbind(cur_y, xt_mat, Weight, Cluster, Time) |> 
-    as.data.frame()
-  
-  return(res)
-}) %>% bind_rows()
-
-data_long_by_clust_list <- data_long |> 
-  group_by(Cluster) |> 
-  group_split(.keep = FALSE)
-
-# TODO: try fast variant because this takes a long time
-rf_res_file <- file.path("5_competitors", "50_sim", "502_rf", "rf_res.RDS")
-if(!file.exists(rf_res_file) | rerun_regression) {
-  # Regress each cluster on covariates using multivariate random forests
-  # Multithreading is too memory-intensive
-  RhpcBLASctl::omp_set_num_threads(1L)
-  RhpcBLASctl::blas_set_num_threads(1L)
-  set.seed(0)
-  rf_res <- lapply(data_long_by_clust_list, function(cur_data_long) {
-    print("cluster")
-    clust_rf_res <- rfsrc.fast(
-      cbind(y1, y2, y3) ~ . - Time - Weight,
-      data = cur_data_long,
-      forest = TRUE,
-      do.trace = 5
-    )
-
-    return(clust_rf_res)
-  })
-
-  saveRDS(rf_res, rf_res_file)
-} else {
-  rf_res <- readRDS(rf_res_file)
-}
-
-# Analyze the resutls
+# Analyze the results
 TT <- length(ybin_list)
 d <- ncol(ybin_list[[1]])
 K <- length(rf_res)
