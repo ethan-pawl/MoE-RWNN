@@ -26,6 +26,7 @@ logs
 5_competitors/50_sim/502_rf/plots
 5_competitors/50_sim/502_rf/*.RDS
 5_competitors/50_sim/502_rf/plots_reg 
+5_competitors/50_sim/503_mixdistreg/cvscores
 5_competitors/50_sim/503_mixdistreg/plots_reg
 5_competitors/50_sim/504_gphme/GP-HME-main
 5_competitors/50_sim/505_gadd/MixtureOfExperts-master

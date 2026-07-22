@@ -7,7 +7,6 @@ library(gifski)
 library(ggrepel)
 library(tidyr)
 
-rerun_clustering_and_matching <- FALSE
 plot_animation <- TRUE
 rerun_regression <- FALSE
 plot_regression_animation <- TRUE
@@ -91,17 +90,18 @@ colnames(data_long)[1:3] <- paste0("PC", 1:3)
 
 ###
 
+l2_grid <- c(0, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100)
 deep_model <- function(x) {
   x %>%
     layer_dense(
       units = 64,
-      activation = "relu",
-      kernel_regularizer = regularizer_l2(1e-4)
+      activation = "relu"# ,
+      # kernel_regularizer = regularizer_l2(1e-4)
     ) %>%
     layer_dense(
       units = 64,
-      activation = "relu",
-      kernel_regularizer = regularizer_l2(1e-4)
+      activation = "relu"# ,
+      # kernel_regularizer = regularizer_l2(1e-4)
     ) %>%
     layer_dense(
       units = 1,
@@ -109,9 +109,31 @@ deep_model <- function(x) {
     )
 }
 
+deep_model_mix <- function(x) {
+  x %>%
+    layer_dense(
+      units = 64,
+      activation = "relu"# ,
+      # kernel_regularizer = regularizer_l2(1e-4)
+    ) %>%
+    layer_dense(
+      units = 64,
+      activation = "relu"# ,
+      # kernel_regularizer = regularizer_l2(1e-4)
+    ) %>%
+    layer_dense(
+      units = 2,
+      activation = "linear"
+    )
+}
+
 PC1_formula_str <- paste0("~ 1 + deep_model(", paste(colnames(data_long[,7:(ncol(data_long) - 2)]), collapse = ","), ")")
 PC1_formula <- as.formula(PC1_formula_str)
 
+PC1_formula_mix_str <- paste0("~ 1 + deep_model_mix(", paste(colnames(data_long[,7:(ncol(data_long) - 2)]), collapse = ","), ")")
+PC1_formula_mix <- as.formula(PC1_formula_mix_str)
+
+# TODO: 10 x 10 cross-validation over mean and prob regularization
 PC1_mod <- mixdistreg(
   data_long$PC1,
   families = "normal",
@@ -130,8 +152,8 @@ PC1_mod <- mixdistreg(
       function(x) tf$exp(x)
     )
   ),
-  formula_mixture = PC1_formula,
-  list_of_deep_models = list(deep_model = deep_model),
+  formula_mixture = PC1_formula_mix,
+  list_of_deep_models = list(deep_model = deep_model, deep_model_mix = deep_model_mix),
   data = data_long, 
   optimizer = optimizer_adam()
 )
@@ -153,6 +175,31 @@ history <- PC1_mod %>% fit(
   )
 )
 
+dist_dr <- get_distribution(PC1_mod)
+
+# Gating probabilities
+pi_hat <- as.matrix(
+  tf$squeeze(
+    dist_dr$submodules[[2]]$probs,
+    axis = 1L
+  )
+)
+
+dim(pi_hat)
+head(pi_hat)
+apply(pi_hat, 2, range)
+apply(pi_hat, 2, sd)
+
+logits <- as.matrix(
+  tf$squeeze(
+    dist_dr$submodules[[2]]$logits_parameter(),
+    axis = 1L
+  )
+)
+
+apply(logits, 2, range)
+apply(logits, 2, sd)
+
 # Get posterior probabilities of cluster membership
 
 dist_dr <- get_distribution(PC1_mod)
@@ -164,6 +211,13 @@ pi_hat <- as.matrix(
     axis = 1L
   )
 )
+
+mu <- dist_dr$submodules[[1]]$loc |> tf$squeeze(1L) |> as.matrix()
+
+dim(mu)
+head(mu)
+apply(mu, 2, range)
+apply(mu, 2, sd)
 
 # Component density terms
 dens <- as.matrix(
