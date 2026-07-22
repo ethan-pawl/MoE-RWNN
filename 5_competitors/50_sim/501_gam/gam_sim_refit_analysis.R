@@ -304,7 +304,7 @@ rmse # [1] 0.3105756 0.3494847
 sum(rmse) # [1] 0.6600603
 
 prob_rmse <- sqrt(mean((prob1_true - prob[,1])^2))
-prob_rmse # 0.318073
+prob_rmse # [1] 0.3218073
 
 # Covariance estimates would be a diagonal matrix
 cov_fit <- sapply(1:K, function(k) {
@@ -318,3 +318,12 @@ cov_err <- sapply(1:K, function(k) {
 })
 cov_err
 # [1] 0.02451901 0.03528520
+
+results <- data.frame(
+  Model = "GAM",
+  Metric = rep(c("RMSE, Mean", "RMSE, Probability", "Frobenius Error, Covariance"), times = c(3, 1, 3)), 
+  Cluster = c("1", "2", "Total", "1", "1", "2", "Total"),
+  Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
+)
+
+# write.csv(results, file.path("5_competitors", "metrics", "gam.csv"), row.names = FALSE)

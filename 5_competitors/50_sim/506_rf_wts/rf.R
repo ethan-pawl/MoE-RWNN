@@ -470,7 +470,6 @@ resid_dotprods <- apply(resids, 3, function(x) {
   crossprod(as.vector(t(x)))
 })
 
-# TODO: update these values
 rmse <- sqrt(resid_dotprods / TT)
 rmse # [1] 0.2073716 0.2764358
 sum(rmse) # [1] 0.4838074
@@ -492,6 +491,17 @@ for(k in 1:K) {
 
   resid_cov[,,k] <- cov(clust_resid)  
 }
-resid_cov
 
-# TODO: may need to fit linear model on 3d simulation (do this if time)
+cov_err <- sapply(1:K, function(k) {
+  sqrt(sum((cov_true[,,k] - resid_cov[,,k])^2))
+})
+cov_err # [1] 0.03367362 0.03066351
+
+results <- data.frame(
+  Model = "Random Forest",
+  Metric = rep(c("RMSE, Mean", "RMSE, Probability", "Frobenius Error, Covariance"), times = c(3, 1, 3)), 
+  Cluster = c("1", "2", "Total", "1", "1", "2", "Total"),
+  Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
+)
+
+# write.csv(results, file.path("5_competitors", "metrics", "rf_wts.csv"), row.names = FALSE)

@@ -635,3 +635,12 @@ cov_err <- sapply(1:K, function(k) {
 })
 cov_err
 # [1] 0.02400551 0.04493897
+
+results <- data.frame(
+  Model = "mixdistreg",
+  Metric = rep(c("RMSE, Mean", "RMSE, Probability", "Frobenius Error, Covariance"), times = c(3, 1, 3)), 
+  Cluster = c("1", "2", "Total", "1", "1", "2", "Total"),
+  Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
+)
+
+# write.csv(results, file.path("5_competitors", "metrics", "mixdistreg.csv"), row.names = FALSE)
