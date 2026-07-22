@@ -53,13 +53,13 @@ response_comp_df <- data.frame(
       "Cluster 2 Estimate"
     ), times = c(296*4, 296*4, 296*3, 296*3)
   ),
-  Value = c(# 4144
+  Value = c(
     as.vector(in_sample$mean_spec), 
     as.vector(in_sample$prob_spec), 
-    as.vector(best$mn[,,2]), 
-    as.vector(best$prob[,2]), 
+    as.vector(best$mn[,,1]), 
+    as.vector(best$prob[,1]), 
     as.vector(in_sample$pico_mu),  
-    as.vector(best$mn[,,1])
+    as.vector(best$mn[,,2])
   ), 
   `Time (t)` = rep(1:296, 14),
   check.names = FALSE
@@ -133,33 +133,34 @@ p1 <- ggplot(response_comp_df, aes(`Time (t)`, Value, group = Cluster, color = C
     strip.text = element_text(size = 14)
   )
 
-pdf(file.path("plots", "mean_response_plot.pdf"), 15.125, 6.86)
+pdf(file.path("5_competitors", "50_sim", "507_linear", "plots", "mean_response_plot.pdf"), 15.125, 6.86)
 print(p1)
 graphics.off()
 
+# Labels are switched
+
 # Calculate RMSE (root mean l2 error)
 mn_fit <- best$mn
-resids <- mn_true - mn_fit # TODO: check for label switching
+resids <- mn_true - mn_fit 
 resid_dotprods <- apply(resids, 3, function(x) {
   crossprod(as.vector(t(x)))
 })
 
 TT <- 296
 rmse <- sqrt(resid_dotprods / TT)
-rmse # [1] 0.2073716 0.2764358
-sum(rmse) # [1] 0.4838074
+rmse # [1] 0.04800998 0.01513985
+sum(rmse) # [1] 0.06314983
 
-# TODO: account for label switching
 prob <- best$prob
 prob_rmse <- sqrt(mean((prob1_true - prob[,1])^2))
-prob_rmse # [1] 0.3337359
+prob_rmse # [1] 0.01373893
 
 K <- 2
 cov_fit <- best$sigma |> aperm(c(2, 3, 1))
 cov_err <- sapply(1:K, function(k) { 
-  sqrt(sum((cov_true[,,k] - cov_fit[,,k])^2)) # TODO: account for label switching
+  sqrt(sum((cov_true[,,k] - cov_fit[,,k])^2)) 
 })
-cov_err # [1] 0.03367362 0.03066351
+cov_err # [1] 0.0008149119 0.0006253325
 
 results <- data.frame(
   Model = "Linear Flowmix",
@@ -168,7 +169,7 @@ results <- data.frame(
   Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
 )
 
-# write.csv(results, file.path("5_competitors", "metrics", "rf_wts.csv"), row.names = FALSE)
+# write.csv(results, file.path("5_competitors", "metrics", "linear_flowmix.csv"), row.names = FALSE)
 
 # Plot clustering frame-by-frame
 mins <- matrix(NA, 296, 3)

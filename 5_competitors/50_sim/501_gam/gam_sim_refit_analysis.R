@@ -294,17 +294,17 @@ if(plot_mean_responses) {
 }
 
 # Calculate RMSE (root mean l2 error)
-resids <- mn_true - mn_fit
+resids <- mn_true - mn_fit[,,2:1] # LABELS SWITCHED (OTHER PLOTS DON'T ACCOUNT FOR THIS)
 resid_dotprods <- apply(resids, 3, function(x) {
   crossprod(as.vector(t(x)))
 })
 
 rmse <- sqrt(resid_dotprods / TT)
-rmse # [1] 0.3105756 0.3494847
-sum(rmse) # [1] 0.6600603
+rmse # [1] 0.2233791 0.2681352
+sum(rmse) # [1] 0.4915143
 
-prob_rmse <- sqrt(mean((prob1_true - prob[,1])^2))
-prob_rmse # [1] 0.3218073
+prob_rmse <- sqrt(mean((prob1_true - prob[,2])^2))
+prob_rmse # [1] 0.305452
 
 # Covariance estimates would be a diagonal matrix
 cov_fit <- sapply(1:K, function(k) {
@@ -314,10 +314,10 @@ cov_fit <- sapply(1:K, function(k) {
 }, simplify = "array")
 
 cov_err <- sapply(1:K, function(k) {
-  sqrt(sum((cov_true[,,k] - cov_fit[,,k])^2))
+  sqrt(sum((cov_true[,,k] - cov_fit[,,if(k == 1) 2 else 1])^2))
 })
 cov_err
-# [1] 0.02451901 0.03528520
+# [1] 0.02366263 0.03586512
 
 results <- data.frame(
   Model = "GAM",

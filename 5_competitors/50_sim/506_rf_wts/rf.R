@@ -1,6 +1,3 @@
-# TODO: rerun with weights
-# TODO: double-check filepaths
-
 library(randomForestSRC)
 library(dplyr)
 library(RColorBrewer)

@@ -487,6 +487,8 @@ y_clust2_cov <- y_pca$rotation %*% pc_clust2_cov %*% t(y_pca$rotation)
 #   file = file.path("5_competitors", "50_sim", "503_mixdistreg", "mixdistreg_results.Rdata")
 # )
 
+# load(file.path("5_competitors", "50_sim", "503_mixdistreg", "mixdistreg_results.Rdata"))
+
 ellipse_df_dim1 <- lapply(1:TT, function(tt) {
   rbind(
     ellipse(y_clust1_cov, centre = mn_fit[tt,1:2,1]),
