@@ -137,8 +137,6 @@ pdf(file.path("5_competitors", "50_sim", "507_linear", "plots", "mean_response_p
 print(p1)
 graphics.off()
 
-# Labels are switched
-
 # Calculate RMSE (root mean l2 error)
 mn_fit <- best$mn
 resids <- mn_true - mn_fit 
@@ -163,13 +161,13 @@ cov_err <- sapply(1:K, function(k) {
 cov_err # [1] 0.0008149119 0.0006253325
 
 results <- data.frame(
-  Model = "Linear Flowmix",
+  Model = "Linear Model",
   Metric = rep(c("RMSE, Mean", "RMSE, Probability", "Frobenius Error, Covariance"), times = c(3, 1, 3)), 
   Cluster = c("1", "2", "Total", "1", "1", "2", "Total"),
   Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
 )
 
-# write.csv(results, file.path("5_competitors", "metrics", "linear_flowmix.csv"), row.names = FALSE)
+# write.csv(results, file.path("5_competitors", "50_sim", "metrics", "linear_flowmix.csv"), row.names = FALSE)
 
 # Plot clustering frame-by-frame
 mins <- matrix(NA, 296, 3)

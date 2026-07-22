@@ -11,6 +11,11 @@ best <- res$bestres
 
 in_sample <- readRDS(file.path("4_3dsim", "3dsimdata", "simdata_imean_2_iprob_1_iint_5_dataSeed_1.RDS"))
 
+# Store ground truth
+mn_true <- abind::abind(in_sample$mean_spec, in_sample$pico_mu, along = 3)
+prob1_true <- in_sample$prob_spec
+cov_true <- abind::abind(in_sample$clust1_cov, in_sample$clust2_cov, along = 3)
+
 mins <- matrix(NA, 296, 3)
 maxs <- matrix(NA, 296, 3)
 for(tt in 1:296) {
@@ -92,50 +97,83 @@ pdf(file.path("plots", "Figure15_comp.pdf"), 7, 7.8)
 print(grid.arrange(grobs = plist_comp, ncol = 2))
 graphics.off()
 
-# Mean, prob, and covariance error metrics
+# Calculate RMSE (root mean l2 error)
+mn_fit <- best$mn
+resids <- mn_true - mn_fit[,,2:1]
+resid_dotprods <- apply(resids, 3, function(x) {
+  crossprod(as.vector(t(x)))
+})
 
-clust1_mn_rmse <- (in_sample$mean_spec - best$mn[,,2])^2 |> 
-  rowSums() |>
-  mean() |> 
-  sqrt()
+TT <- 296
+rmse <- sqrt(resid_dotprods / TT)
+rmse # [1] 0.01043708 0.01565043
+sum(rmse) # [1] 0.0260875
 
-clust2_mn_rmse <- (in_sample$pico_mu - best$mn[,,1])^2 |> 
-  rowSums() |>
-  mean() |> 
-  sqrt()
+prob <- best$prob
+prob_rmse <- sqrt(mean((prob1_true - prob[,2])^2))
+prob_rmse # [1] 0.01036922
 
-prob_rmse <- (in_sample$prob_spec - best$prob[,2])^2 |> 
-  mean() |> 
-  sqrt()
+K <- 2
+cov_fit <- best$sigma |> aperm(c(2, 3, 1))
+cov_err <- sapply(1:K, function(k) { 
+  sqrt(sum((cov_true[,,k] - cov_fit[,,if(k == 1) 2 else 1])^2)) 
+})
+cov_err # [1] 0.0006082765 0.0004734345
 
-Sigma1_rfe <- sqrt(norm(in_sample$clust1_cov - best$sigma[2,,], "F"))
-Sigma2_rfe <- sqrt(norm(in_sample$clust2_cov - best$sigma[1,,], "F"))
-Sigma1_rmfe <- sqrt(norm(in_sample$clust1_cov - best$sigma[2,,], "F") / 9)
-Sigma2_rmfe <- sqrt(norm(in_sample$clust2_cov - best$sigma[1,,], "F") / 9)
+results <- data.frame(
+  Model = "Nonlinear Model",
+  Metric = rep(c("RMSE, Mean", "RMSE, Probability", "Frobenius Error, Covariance"), times = c(3, 1, 3)), 
+  Cluster = c("1", "2", "Total", "1", "1", "2", "Total"),
+  Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
+)
 
-clust1_mn_rmse # 0.01043708
-clust2_mn_rmse # 0.01565043
-prob_rmse # 0.01036922
-Sigma1_rfe # 0.02466326
-Sigma2_rfe # 0.02175855
-Sigma1_rmfe # 0.008221088
-Sigma2_rmfe # 0.00725285
+# write.csv(results, file.path("5_competitors", "50_sim", "metrics", "nonlinear_flowmix.csv"), row.names = FALSE)
 
-# Compare with ranges of data
+# OLD
+# # Mean, prob, and covariance error metrics
 
-# Range of cluster 1 mean is 
-best$maxdev * 2 # 0.4295578
+# clust1_mn_rmse <- (in_sample$mean_spec - best$mn[,,2])^2 |> 
+#   rowSums() |>
+#   mean() |> 
+#   sqrt()
 
-# Range of probability is 
-diff(range(in_sample$prob_spec)) # 0.9280987
+# clust2_mn_rmse <- (in_sample$pico_mu - best$mn[,,1])^2 |> 
+#   rowSums() |>
+#   mean() |> 
+#   sqrt()
 
-# Rt Frobenius norms of covariance matrices is 
-sqrt(norm(in_sample$clust1_cov, "F")) # 0.2835307
-sqrt(norm(in_sample$clust2_cov, "F")) # 0.2907639
+# prob_rmse <- (in_sample$prob_spec - best$prob[,2])^2 |> 
+#   mean() |> 
+#   sqrt()
 
-# Scaled by # of components
-sqrt(norm(in_sample$clust1_cov, "F") / 9) # 0.09451024
-sqrt(norm(in_sample$clust2_cov, "F") / 9) # 0.09692129
+# Sigma1_rfe <- sqrt(norm(in_sample$clust1_cov - best$sigma[2,,], "F"))
+# Sigma2_rfe <- sqrt(norm(in_sample$clust2_cov - best$sigma[1,,], "F"))
+# Sigma1_rmfe <- sqrt(norm(in_sample$clust1_cov - best$sigma[2,,], "F") / 9)
+# Sigma2_rmfe <- sqrt(norm(in_sample$clust2_cov - best$sigma[1,,], "F") / 9)
+
+# clust1_mn_rmse # 0.01043708
+# clust2_mn_rmse # 0.01565043
+# prob_rmse # 0.01036922
+# Sigma1_rfe # 0.02466326
+# Sigma2_rfe # 0.02175855
+# Sigma1_rmfe # 0.008221088
+# Sigma2_rmfe # 0.00725285
+
+# # Compare with ranges of data
+
+# # Range of cluster 1 mean is 
+# best$maxdev * 2 # 0.4295578
+
+# # Range of probability is 
+# diff(range(in_sample$prob_spec)) # 0.9280987
+
+# # Rt Frobenius norms of covariance matrices is 
+# sqrt(norm(in_sample$clust1_cov, "F")) # 0.2835307
+# sqrt(norm(in_sample$clust2_cov, "F")) # 0.2907639
+
+# # Scaled by # of components
+# sqrt(norm(in_sample$clust1_cov, "F") / 9) # 0.09451024
+# sqrt(norm(in_sample$clust2_cov, "F") / 9) # 0.09692129
 
 # Just for cluster 1
 response_comp_df <- data.frame(

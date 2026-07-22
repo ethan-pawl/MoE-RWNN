@@ -37,4 +37,5 @@ logs
 5_competitors/50_sim/506_rf_wts/plots_reg 
 5_competitors/50_sim/507_linear/results
 5_competitors/50_sim/507_linear/plots
-5_competitors/metrics
+5_competitors/50_sim/metrics
+5_competitors/50_sim/metrics_plot.pdf
