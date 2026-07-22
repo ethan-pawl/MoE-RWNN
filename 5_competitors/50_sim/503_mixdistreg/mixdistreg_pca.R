@@ -6,6 +6,7 @@ library(gridExtra)
 library(gifski)
 library(ggrepel)
 library(tidyr)
+library(ellipse)
 
 plot_animation <- TRUE
 rerun_regression <- FALSE
@@ -90,18 +91,17 @@ colnames(data_long)[1:3] <- paste0("PC", 1:3)
 
 ###
 
-l2_grid <- c(0, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100)
 deep_model <- function(x) {
   x %>%
     layer_dense(
       units = 64,
-      activation = "relu"# ,
-      # kernel_regularizer = regularizer_l2(1e-4)
+      activation = "relu",
+      kernel_regularizer = regularizer_l2(1e-3)
     ) %>%
     layer_dense(
       units = 64,
-      activation = "relu"# ,
-      # kernel_regularizer = regularizer_l2(1e-4)
+      activation = "relu",
+      kernel_regularizer = regularizer_l2(1e-3)
     ) %>%
     layer_dense(
       units = 1,
@@ -113,13 +113,13 @@ deep_model_mix <- function(x) {
   x %>%
     layer_dense(
       units = 64,
-      activation = "relu"# ,
-      # kernel_regularizer = regularizer_l2(1e-4)
+      activation = "relu",
+      kernel_regularizer = regularizer_l2(1e-5)
     ) %>%
     layer_dense(
       units = 64,
-      activation = "relu"# ,
-      # kernel_regularizer = regularizer_l2(1e-4)
+      activation = "relu",
+      kernel_regularizer = regularizer_l2(1e-5)
     ) %>%
     layer_dense(
       units = 2,
@@ -133,7 +133,6 @@ PC1_formula <- as.formula(PC1_formula_str)
 PC1_formula_mix_str <- paste0("~ 1 + deep_model_mix(", paste(colnames(data_long[,7:(ncol(data_long) - 2)]), collapse = ","), ")")
 PC1_formula_mix <- as.formula(PC1_formula_mix_str)
 
-# TODO: 10 x 10 cross-validation over mean and prob regularization
 PC1_mod <- mixdistreg(
   data_long$PC1,
   families = "normal",
@@ -175,54 +174,46 @@ history <- PC1_mod %>% fit(
   )
 )
 
-dist_dr <- get_distribution(PC1_mod)
+dist_obj <- get_distribution(PC1_mod)
+
+# TODO: continue running here
 
 # Gating probabilities
 pi_hat <- as.matrix(
   tf$squeeze(
-    dist_dr$submodules[[2]]$probs,
+    dist_obj$submodules[[2]]$probs,
     axis = 1L
   )
 )
 
-dim(pi_hat)
-head(pi_hat)
-apply(pi_hat, 2, range)
-apply(pi_hat, 2, sd)
+# dim(pi_hat)
+# head(pi_hat)
+# apply(pi_hat, 2, range)
+# apply(pi_hat, 2, sd)
 
-logits <- as.matrix(
-  tf$squeeze(
-    dist_dr$submodules[[2]]$logits_parameter(),
-    axis = 1L
-  )
-)
+# logits <- as.matrix(
+#   tf$squeeze(
+#     dist_dr$submodules[[2]]$logits_parameter(),
+#     axis = 1L
+#   )
+# )
 
-apply(logits, 2, range)
-apply(logits, 2, sd)
+# apply(logits, 2, range)
+# apply(logits, 2, sd)
 
 # Get posterior probabilities of cluster membership
 
-dist_dr <- get_distribution(PC1_mod)
+# mu <- dist_obj$submodules[[1]]$loc |> tf$squeeze(1L) |> as.matrix()
 
-# Gating probabilities
-pi_hat <- as.matrix(
-  tf$squeeze(
-    dist_dr$submodules[[2]]$probs,
-    axis = 1L
-  )
-)
-
-mu <- dist_dr$submodules[[1]]$loc |> tf$squeeze(1L) |> as.matrix()
-
-dim(mu)
-head(mu)
-apply(mu, 2, range)
-apply(mu, 2, sd)
+# dim(mu)
+# head(mu)
+# apply(mu, 2, range)
+# apply(mu, 2, sd)
 
 # Component density terms
 dens <- as.matrix(
   tf$squeeze(
-    dist_dr$submodules[[1]]$prob(
+    dist_obj$submodules[[1]]$prob(
       array(data_long$PC1, dim = c(nrow(data_long),1, 1))
     ), 
     axis = 1L
@@ -242,7 +233,6 @@ PC2_mod1 <- deepregression(
     scale = ~ 1
   ), 
   list_of_deep_models = list(deep_model = deep_model),
-  # weights = post_probs[,1],
   data = data_long, 
   optimizer = optimizer_adam()
 )
@@ -295,7 +285,6 @@ PC3_mod1 <- deepregression(
     scale = ~ 1
   ), 
   list_of_deep_models = list(deep_model = deep_model),
-  # weights = post_probs[,1],
   data = data_long, 
   optimizer = optimizer_adam()
 )
@@ -343,7 +332,7 @@ history_32 <- PC3_mod2 %>% fit(
 # Analyze the results
 TT <- length(ybin_list)
 d <- ncol(ybin_list[[1]])
-K <- length(2)
+K <- 2
 
 wide_X_df <- cbind(1, 1, 1, 1, 1, 1, X_df, 1:296, 1)
 colnames(wide_X_df)[1:6] <- c(paste0("PC", 1:3), paste0("y", 1:3))
@@ -377,9 +366,7 @@ mn_fit_list <- apply(mn_fit_pc, 3, function(x) {
 mn_fit <- do.call(abind::abind, list(mn_fit_list, along = 3))
 
 prob <- dist_pc1$submodules[[2]]$probs |> tf$squeeze(1) |> as.matrix()
-# TODO: figure out why probs are constant across time
 
-K <- 2
 means_probs_df <- lapply(1:TT, function(tt) {
   data.frame(
     # mean_1 = best_kmeans[[tt]]$centers[,1],
@@ -409,98 +396,6 @@ set1 <- brewer.pal(9, "Set1")
 plots_path <- file.path(
   "5_competitors", "50_sim", "503_mixdistreg", "plots_reg"
 )
-
-# TODO: construct the ellipses and add to the animation
-if(plot_regression_animation) {  
-
-  frames_path <- file.path(plots_path, "frames")
-
-  if(!dir.exists(frames_path)) {
-    dir.create(frames_path, recursive = TRUE)
-  }
-
-  y1_breaks <- seq(0, 2.5, 0.5)
-  y2_breaks <- seq(0.75, 2.25, 0.5)
-  y3_breaks <- seq(0.25, 2.75, 0.5)
-
-
-  prob_range <- range(means_probs_df$prob, na.rm = TRUE)
-
-  for(tt in 1:TT) {
-    cur_ylist_df <- subset(ylist_df, time == tt)
-    cur_mp_df <- subset(means_probs_df, time == tt)
-
-    p1 <- ggplot(cur_ylist_df) +
-      geom_tile(aes(y1, y2, alpha = Bin_Biomass, fill = cluster)) + 
-      scale_x_continuous(breaks = y1_breaks) + 
-      scale_y_continuous(breaks = y2_breaks) + 
-      coord_cartesian(xlim = range(y1_breaks), ylim = range(y2_breaks)) + 
-      scale_fill_manual(values = c(set1, "black")) + 
-      scale_alpha_continuous(range = c(0.2, 1)) + 
-      theme_gray(base_family = "sans") + 
-      theme(axis.title = element_text(size = 8), plot.title = element_text(size = 10), 
-        axis.text = element_text(size = 6), legend.position = "none", 
-        axis.line = element_line(linewidth = 0.25)
-      ) + 
-      geom_point(
-        data = cur_mp_df, 
-        mapping = aes(x = mean_1, y = mean_2, size = prob)
-      ) + 
-      scale_size_continuous(range = c(0, 4)) + 
-      geom_text_repel(data = cur_mp_df, 
-        mapping = aes(mean_1, mean_2, label = cluster), size = 3, box.padding = 0.25, 
-        min.segment.length = 0.25, segment.size = 0.25
-      )
-  
-    p2 <- ggplot(cur_ylist_df) +
-      geom_tile(aes(y2, y3, alpha = Bin_Biomass, fill = cluster)) + 
-      scale_x_continuous(breaks = y2_breaks) + 
-      scale_y_continuous(breaks = y3_breaks) + 
-      coord_cartesian(xlim = range(y2_breaks), ylim = range(y3_breaks)) + 
-      scale_fill_manual(values = c(set1, "black")) + 
-      scale_alpha_continuous(range = c(0.2, 1)) + 
-      theme_gray(base_family = "sans") + 
-      theme(axis.title = element_text(size = 8), plot.title = element_text(size = 10), 
-        axis.text = element_text(size = 6), legend.position = "none", 
-        axis.line = element_line(linewidth = 0.25)
-      ) + 
-      geom_point(
-        data = cur_mp_df, 
-        mapping = aes(x = mean_2, y = mean_3, size = prob)
-      ) +
-      scale_size_continuous(range = c(0, 4)) + 
-      geom_text_repel(data = cur_mp_df, 
-        mapping = aes(mean_2, mean_3, label = cluster), size = 3, box.padding = 0.25, 
-        min.segment.length = 0.25, segment.size = 0.25
-      )
-
-    png(
-      sprintf(file.path(frames_path, "frame_%04d.png"), tt), 
-      width = 1080, height = 540, res = 80, type = "cairo"
-    )
-
-    grid.arrange(
-      p1, p2,
-      ncol = 2,
-      top = sprintf("Time %d", tt)
-    )
-
-    dev.off()
-  }
-
-  # memory cache exhausted; try to rerun
-  # imgs <- image_read(list.files(file.path("5_competitors", "50_sim", "501_gam", "plots", "frames"), full.names = TRUE))
-  # gif <- image_animate(imgs, fps = 10)
-  # image_write(gif, "animation.gif")
-
-  gifski(
-    list.files(frames_path, full.names = TRUE),
-    gif_file = file.path(plots_path, "animation.gif"),
-    width = 1080,
-    height = 540,
-    delay = 1/10
-  )
-}
 
 if(plot_mean_responses) {
   means_probs_df$cluster <- paste0("Cluster ", means_probs_df$cluster, " Estimate")
@@ -569,7 +464,152 @@ if(plot_mean_responses) {
   ggsave(file.path(plots_path, "mean_response_plot.pdf"), mean_response_plot, width = 15.25, height = 6.75, 
     units = "in"
   )
+}
 
+pc1_vars <- as.numeric(dist_pc1$submodules[[1]]$scale[1,1,])^2
+pc2_vars <- c(
+  as.numeric(dist_pc21$submodules[[1]]$scale[1,])^2, 
+  as.numeric(dist_pc22$submodules[[1]]$scale[1,])^2
+)
+pc3_vars <- c(
+  as.numeric(dist_pc31$submodules[[1]]$scale[1,])^2, 
+  as.numeric(dist_pc32$submodules[[1]]$scale[1,])^2
+)
+
+pc_clust1_cov <- diag(c(pc1_vars[1], pc2_vars[1], pc3_vars[1]))
+pc_clust2_cov <- diag(c(pc1_vars[2], pc2_vars[2], pc3_vars[2]))
+y_clust1_cov <- y_pca$rotation %*% pc_clust1_cov %*% t(y_pca$rotation)
+y_clust2_cov <- y_pca$rotation %*% pc_clust2_cov %*% t(y_pca$rotation)
+
+# save(
+#   mn_fit_pc, mn_fit, prob, pc_clust1_cov, pc_clust2_cov, 
+#   y_clust1_cov, y_clust2_cov, 
+#   file = file.path("5_competitors", "50_sim", "503_mixdistreg", "mixdistreg_results.Rdata")
+# )
+
+ellipse_df_dim1 <- lapply(1:TT, function(tt) {
+  rbind(
+    ellipse(y_clust1_cov, centre = mn_fit[tt,1:2,1]),
+    ellipse(y_clust2_cov, centre = mn_fit[tt,1:2,2])
+  )
+}) %>% do.call(rbind, .)
+
+ellipse_df_dim1 <- as.data.frame(ellipse_df_dim1)
+ellipse_df_dim1$cluster <- rep(1:K, each = 100) |> rep(TT)
+ellipse_df_dim1$time <- rep(1:TT, each = 100 * K)
+
+ellipse_df_dim2 <- lapply(1:TT, function(tt) {
+  rbind(
+    ellipse(y_clust1_cov, centre = mn_fit[tt,2:3,1], which = c(2, 3)),
+    ellipse(y_clust2_cov, centre = mn_fit[tt,2:3,2], which = c(2, 3))
+  )
+}) %>% do.call(rbind, .)
+
+ellipse_df_dim2 <- as.data.frame(ellipse_df_dim2)
+ellipse_df_dim2$cluster <- rep(1:K, each = 100) |> rep(TT)
+ellipse_df_dim2$time <- rep(1:TT, each = 100 * K)
+
+if(plot_regression_animation) {  
+
+  frames_path <- file.path(plots_path, "frames")
+
+  if(!dir.exists(frames_path)) {
+    dir.create(frames_path, recursive = TRUE)
+  }
+
+  y1_breaks <- seq(0, 2.5, 0.5)
+  y2_breaks <- seq(0.75, 2.25, 0.5)
+  y3_breaks <- seq(0.25, 2.75, 0.5)
+
+
+  prob_range <- range(means_probs_df$prob, na.rm = TRUE)
+
+  for(tt in 1:TT) {
+    cur_ylist_df <- subset(ylist_df, time == tt)
+    cur_mp_df <- subset(means_probs_df, time == tt)
+    cur_ellipse_df_dim1 <- subset(ellipse_df_dim1, time == tt)
+    cur_ellipse_df_dim2 <- subset(ellipse_df_dim2, time == tt)
+
+    p1 <- ggplot(cur_ylist_df) +
+      geom_tile(aes(y1, y2, alpha = Bin_Biomass)) + 
+      scale_x_continuous(breaks = y1_breaks) + 
+      scale_y_continuous(breaks = y2_breaks) + 
+      coord_cartesian(xlim = range(y1_breaks), ylim = range(y2_breaks)) + 
+      scale_fill_manual(values = c(set1, "black")) + 
+      scale_alpha_continuous(range = c(0.2, 1)) + 
+      theme_gray(base_family = "sans") + 
+      theme(axis.title = element_text(size = 8), plot.title = element_text(size = 10), 
+        axis.text = element_text(size = 6), legend.position = "none", 
+        axis.line = element_line(linewidth = 0.25)
+      ) + 
+      geom_point(
+        data = cur_mp_df, 
+        mapping = aes(x = mean_1, y = mean_2, size = prob)
+      ) + 
+      scale_size_continuous(range = c(0, 4)) + 
+      geom_text_repel(data = cur_mp_df, 
+        mapping = aes(mean_1, mean_2, label = cluster), size = 3, box.padding = 0.25, 
+        min.segment.length = 0.25, segment.size = 0.25
+      ) + 
+      geom_path(
+        data = cur_ellipse_df_dim1, 
+        mapping = aes(y1, y2, group = cluster), 
+        linetype = "dashed", linewidth = 0.25
+      )
+  
+    p2 <- ggplot(cur_ylist_df) +
+      geom_tile(aes(y2, y3, alpha = Bin_Biomass)) + 
+      scale_x_continuous(breaks = y2_breaks) + 
+      scale_y_continuous(breaks = y3_breaks) + 
+      coord_cartesian(xlim = range(y2_breaks), ylim = range(y3_breaks)) + 
+      scale_fill_manual(values = c(set1, "black")) + 
+      scale_alpha_continuous(range = c(0.2, 1)) + 
+      theme_gray(base_family = "sans") + 
+      theme(axis.title = element_text(size = 8), plot.title = element_text(size = 10), 
+        axis.text = element_text(size = 6), legend.position = "none", 
+        axis.line = element_line(linewidth = 0.25)
+      ) + 
+      geom_point(
+        data = cur_mp_df, 
+        mapping = aes(x = mean_2, y = mean_3, size = prob)
+      ) +
+      scale_size_continuous(range = c(0, 4)) + 
+      geom_text_repel(data = cur_mp_df, 
+        mapping = aes(mean_2, mean_3, label = cluster), size = 3, box.padding = 0.25, 
+        min.segment.length = 0.25, segment.size = 0.25
+      ) + 
+      geom_path(
+        data = cur_ellipse_df_dim2, 
+        mapping = aes(y2, y3, group = cluster), 
+        linetype = "dashed", linewidth = 0.25
+      )
+
+    png(
+      sprintf(file.path(frames_path, "frame_%04d.png"), tt), 
+      width = 1080, height = 540, res = 80, type = "cairo"
+    )
+
+    grid.arrange(
+      p1, p2,
+      ncol = 2,
+      top = sprintf("Time %d", tt)
+    )
+
+    dev.off()
+  }
+
+  # memory cache exhausted; try to rerun
+  # imgs <- image_read(list.files(file.path("5_competitors", "50_sim", "501_gam", "plots", "frames"), full.names = TRUE))
+  # gif <- image_animate(imgs, fps = 10)
+  # image_write(gif, "animation.gif")
+
+  gifski(
+    list.files(frames_path, full.names = TRUE),
+    gif_file = file.path(plots_path, "animation.gif"),
+    width = 1080,
+    height = 540,
+    delay = 1/10
+  )
 }
 
 # Calculate RMSE (root mean l2 error)
@@ -579,21 +619,19 @@ resid_dotprods <- apply(resids, 3, function(x) {
 })
 
 rmse <- sqrt(resid_dotprods / TT)
-rmse # [1] 0.3105756 0.3494847
-sum(rmse) # [1] 0.6600603
+rmse # [1] 0.2230055 0.1223208
+sum(rmse) # [1] 0.3453264
 
 prob_rmse <- sqrt(mean((prob1_true - prob[,1])^2))
-prob_rmse # 0.318073
+prob_rmse # [1] 0.3582185
 
 # Covariance estimates would be a diagonal matrix
-cov_fit <- sapply(1:K, function(k) {
-  sapply(1:d, function(j) {
-    per_cluster_res[[j]][[k]]$sig2
-  }) |> diag()
-}, simplify = "array")
+cov_fit <- abind::abind(
+  y_clust1_cov, y_clust2_cov, along = 3
+)
 
 cov_err <- sapply(1:K, function(k) {
   sqrt(sum((cov_true[,,k] - cov_fit[,,k])^2))
 })
 cov_err
-# [1] 0.02451901 0.03528520
+# [1] 0.02400551 0.04493897
