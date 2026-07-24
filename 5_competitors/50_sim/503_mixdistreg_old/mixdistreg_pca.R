@@ -176,6 +176,8 @@ history <- PC1_mod %>% fit(
 
 dist_obj <- get_distribution(PC1_mod)
 
+# TODO: continue running here
+
 # Gating probabilities
 pi_hat <- as.matrix(
   tf$squeeze(

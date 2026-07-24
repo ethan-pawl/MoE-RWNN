@@ -19,6 +19,9 @@ logs
 5_competitors/50_sim/501_gam/*.RDS
 5_competitors/50_sim/501_gam/plots
 5_competitors/50_sim/501_gam/plots_refit
+5_competitors/50_sim/501_gam_old/*.RDS
+5_competitors/50_sim/501_gam_old/plots
+5_competitors/50_sim/501_gam_old/plots_refit
 5_competitors/51_real/510_k_means/plots
 5_competitors/51_real/510_k_means/*.Rdata
 5_competitors/51_real/511_gam/*.RDS
@@ -29,6 +32,9 @@ logs
 5_competitors/50_sim/503_mixdistreg/cvscores
 5_competitors/50_sim/503_mixdistreg/plots_reg
 5_competitors/50_sim/503_mixdistreg/*.Rdata
+5_competitors/50_sim/503_mixdistreg_old/cvscores
+5_competitors/50_sim/503_mixdistreg_old/plots_reg
+5_competitors/50_sim/503_mixdistreg_old/*.Rdata
 5_competitors/50_sim/504_gphme/GP-HME-main
 5_competitors/50_sim/505_gadd/MixtureOfExperts-master
 5_competitors/50_sim/506_rf_wts/sidcluster-matched.Rdata

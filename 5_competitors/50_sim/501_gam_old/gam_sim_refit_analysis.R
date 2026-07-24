@@ -1,19 +1,17 @@
-library(mixdistreg)
+plot_animation <- FALSE
+plot_mean_responses <- FALSE
+
 library(dplyr)
 library(RColorBrewer)
-library(ggplot2)
 library(gridExtra)
-library(gifski)
+library(ggplot2)
+# library(magick)
 library(ggrepel)
+library(gifski)
 library(tidyr)
 
-rerun_clustering_and_matching <- FALSE
-plot_animation <- TRUE
-rerun_regression <- FALSE
-plot_regression_animation <- TRUE
-plot_mean_responses <- TRUE
+per_cluster_res <- readRDS(file.path("5_competitors", "50_sim", "501_gam", "bam_refit.RDS"))
 
-# Load the data
 datobj <- readRDS(
   file.path(
     "4_3dsim", 
@@ -22,10 +20,13 @@ datobj <- readRDS(
   )
 )
 
+# str(datobj, max.level = 1)
+
 ybin_list <- datobj$ybin_list
 countslist <- datobj$countslist
 
-gt_df <- lapply(seq_along(ybin_list), function(tt) {
+TT <- length(ybin_list)
+gt_df <- lapply(1:TT, function(tt) {
   rbind(
     data.frame( # Cluster 1
       mean_1 = datobj$mean_spec[tt,1],
@@ -49,124 +50,58 @@ gt_df <- lapply(seq_along(ybin_list), function(tt) {
 mn_true <- abind::abind(datobj$mean_spec, datobj$pico_mu, along = 3)
 prob1_true <- datobj$prob_spec
 cov_true <- abind::abind(datobj$clust1_cov, datobj$clust2_cov, along = 3)
+# 296 x 3 x 2
 
 rm(datobj)
 
 real_dataobj <- readRDS(file = file.path("data", "MGL1704-hourly-paper.RDS"))
 X <- real_dataobj$X
-X_df <- as.data.frame(X[,3:ncol(X)])
 rm(real_dataobj)
 
-ybin_list <- lapply(seq_along(ybin_list), function(tt) {
-  cur_y <- as.data.frame(ybin_list[[tt]])
-  colnames(cur_y) <- c("y1", "y2", "y3")
-  
-  return(cur_y)
-})
+# str(per_cluster_res, max.level = 1)
+# str(per_cluster_res$y1_res, max.level = 1)
+# str(per_cluster_res$y1_res[[1]], max.level = 1)
 
-data_long <- lapply(seq_along(ybin_list), function(tt) {
-  cur_y <- ybin_list[[tt]]
-  nt <- nrow(cur_y)
+library(mgcv)
 
-  which_covs <- 3:ncol(X)
-  xt_mat <- matrix(rep(X[tt,which_covs], each = nt), nt)
-  colnames(xt_mat) <- colnames(X)[which_covs]
-
-  Weight <- countslist[[tt]]
-  Time <- tt
-  res <- cbind(cur_y, xt_mat, Weight, Time) |> 
-    as.data.frame()
-  
-  return(res)
-}) %>% bind_rows()
-
-### 
-
-# TODO: write code to fit mixdistreg
-# TODO: loop over response dimension
-
-deep_model <- function(x) {
-  x %>%
-    layer_dense(
-      units = 64,
-      activation = "relu",
-      kernel_regularizer = regularizer_l2(1e-4)
-    ) %>%
-    layer_dense(
-      units = 64,
-      activation = "relu",
-      kernel_regularizer = regularizer_l2(1e-4)
-    ) %>%
-    layer_dense(
-      units = 1,
-      activation = "linear"
-    )
-}
-
-y1_formula_str <- paste0("~ 1 + deep_model(", paste(colnames(data_long[,4:(ncol(data_long) - 2)]), collapse = ","), ")")
-y1_formula <- as.formula(y1_formula_str)
-
-y1_mod <- mixdistreg(
-  data_long$y1,
-  families = "normal",
-  nr_comps = 2L,
-  list_of_formulas = list(
-    loc_1 = y1_formula, scale_1 = ~ 1, 
-    loc_2 = y1_formula, scale_2 = ~ 1
-  ),
-  trafos_each_param = list(
-    list(
-      function(x) x,
-      function(x) tf$exp(x)
-    ),
-    list(
-      function(x) x,
-      function(x) tf$exp(x)
-    )
-  ),
-  formula_mixture = y1_formula,
-  list_of_deep_models = list(deep_model = deep_model),
-  data = data_long, 
-  optimizer = optimizer_adam()
-)
-
-RhpcBLASctl::omp_set_num_threads(1L)
-RhpcBLASctl::blas_set_num_threads(1L)
-
-
-history <- y1_mod %>% fit(
-  epochs = 500,
-  early_stopping = TRUE, 
-  sample_weight = data_long$Weight, 
-  batch_size = 512, 
-  callbacks = list(
-    callback_early_stopping(
-      monitor = "val_loss",
-      patience = 10,
-      restore_best_weights = TRUE
-    )
-  )
-)
-
-# Analyze the results
 TT <- length(ybin_list)
-d <- ncol(ybin_list[[1]])
-K <- length(rf_res)
+d <- length(per_cluster_res)
+K <- length(per_cluster_res[[1]])
 
 mn_fit <- array(NA, c(TT, d, K))
-for(k in 1:K) {
-  mn_fit[,,k] <- predict(
-    rf_res[[k]],
-    newdata = X_df, 
-    type = "response"
-  )
+
+X_df <- as.data.frame(X[,3:ncol(X)])
+
+for(j in 1:d) {
+  for(k in 1:K) {
+    mn_fit[,j,k] <- predict(
+      per_cluster_res[[j]][[k]],
+      newdata = X_df, 
+      type = "response"
+    )
+  }
 }
+
+load(file.path("5_competitors", "50_sim", "500_k_means", "best_kmeans__scores-matched.Rdata"))
 
 prob <- matrix(NA, TT, K)
 for(tt in 1:TT) {
-  prob[tt,] <- table(clust_res[[tt]]) / length(clust_res[[tt]])
+  prob[tt,] <- best_kmeans[[tt]]$size / sum(best_kmeans[[tt]]$size)
 }
 
+# TODO: plot clustering with means over time
+# TODO: plot mean responses over time, comparing with 
+# ground truth (use preexisting code)
+
+threeD_sim_summary <- readRDS("/home/ethan/00_Cyto/MoE-RWNN/4_3dsim/results/3dsim_summary.RDS")
+
+# str(threeD_sim_summary$bestres, max.level = 1)
+
+ybin_list <- lapply(ybin_list, function(cur_y) {
+  colnames(cur_y) <- paste0("y", 1:3)
+  cur_y
+})
+ 
 means_probs_df <- lapply(1:TT, function(tt) {
   data.frame(
     # mean_1 = best_kmeans[[tt]]$centers[,1],
@@ -191,10 +126,10 @@ ylist_df <- lapply(1:TT, function(tt) {
   cur_ylist_df 
 }) |> bind_rows()
 
-if(plot_regression_animation) {
+if(plot_animation) {
   
   plots_path <- file.path(
-    "5_competitors", "50_sim", "502_rf", "plots_reg"
+    "5_competitors", "50_sim", "501_gam", "plots_refit"
   )
 
   frames_path <- file.path(plots_path, "frames")
@@ -209,6 +144,7 @@ if(plot_regression_animation) {
 
   set1 <- brewer.pal(9, "Set1")
 
+  # TODO: maybe remove this for compatibility
   prob_range <- range(means_probs_df$prob, na.rm = TRUE)
 
   for(tt in 1:TT) {
@@ -358,17 +294,17 @@ if(plot_mean_responses) {
 }
 
 # Calculate RMSE (root mean l2 error)
-resids <- mn_true - mn_fit
+resids <- mn_true - mn_fit[,,2:1] # LABELS SWITCHED (OTHER PLOTS DON'T ACCOUNT FOR THIS)
 resid_dotprods <- apply(resids, 3, function(x) {
   crossprod(as.vector(t(x)))
 })
 
 rmse <- sqrt(resid_dotprods / TT)
-rmse # [1] 0.3105756 0.3494847
-sum(rmse) # [1] 0.6600603
+rmse # [1] 0.2233791 0.2681352
+sum(rmse) # [1] 0.4915143
 
-prob_rmse <- sqrt(mean((prob1_true - prob[,1])^2))
-prob_rmse # 0.318073
+prob_rmse <- sqrt(mean((prob1_true - prob[,2])^2))
+prob_rmse # [1] 0.305452
 
 # Covariance estimates would be a diagonal matrix
 cov_fit <- sapply(1:K, function(k) {
@@ -378,7 +314,16 @@ cov_fit <- sapply(1:K, function(k) {
 }, simplify = "array")
 
 cov_err <- sapply(1:K, function(k) {
-  sqrt(sum((cov_true[,,k] - cov_fit[,,k])^2))
+  sqrt(sum((cov_true[,,k] - cov_fit[,,if(k == 1) 2 else 1])^2))
 })
 cov_err
-# [1] 0.02451901 0.03528520
+# [1] 0.02366263 0.03586512
+
+results <- data.frame(
+  Model = "GAM",
+  Metric = rep(c("RMSE, Mean", "RMSE, Probability", "Frobenius Error, Covariance"), times = c(3, 1, 3)), 
+  Cluster = c("1", "2", "Total", "1", "1", "2", "Total"),
+  Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
+)
+
+# write.csv(results, file.path("5_competitors", "50_sim", "metrics", "gam.csv"), row.names = FALSE)

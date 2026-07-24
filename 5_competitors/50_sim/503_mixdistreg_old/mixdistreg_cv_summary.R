@@ -1,23 +1,19 @@
 cvscore_dir <- file.path("5_competitors", "50_sim", "503_mixdistreg", "cvscores")
 
 l1_grid <- c(0, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100)
-cv_gridsize <- length(l1_grid)
-nfold <- 5
 
-cvscore_arr <- array(NA, c(cv_gridsize, cv_gridsize, nfold))
-dimnames(cvscore_arr) <- list(
+cvscore_mat <- matrix(NA, 10, 10)
+dimnames(cvscore_mat) <- list(
   ialpha = l1_grid, 
-  ibeta = l1_grid, 
-  ifold = 1:nfold
+  ibeta = l1_grid
 )
 
-for(i in 1:cv_gridsize) {
-  for(j in 1:cv_gridsize) {
-    for(k in 1:nfold) {
-      load(file.path(cvscore_dir, paste(i, j, k, "cvscore.Rdata", sep = "-")))
-      # Loads ialpha, ibeta, cvscore
-      cvscore_mat[ialpha,ibeta,ifold] <- cvscore
-    }
+for(i in 1:10) {
+  for(j in 1:10) {
+    load(file.path(cvscore_dir, paste0(i, "-", j, "-cvscore.Rdata")))
+
+    # Loads ialpha, ibeta, cvscore
+    cvscore_mat[ialpha,ibeta] <- cvscore
   }
 }
 
