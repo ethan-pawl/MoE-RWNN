@@ -96,12 +96,12 @@ deep_model <- function(x) {
     layer_dense(
       units = 64,
       activation = "relu",
-      kernel_regularizer = regularizer_l2(1e-4)
+      kernel_regularizer = regularizer_l2(1e-3)
     ) %>%
     layer_dense(
       units = 64,
       activation = "relu",
-      kernel_regularizer = regularizer_l2(1e-4)
+      kernel_regularizer = regularizer_l2(1e-3)
     ) %>%
     layer_dense(
       units = 1,
