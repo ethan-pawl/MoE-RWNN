@@ -12,13 +12,16 @@ library(ggplot2)
 
 metrics$Model <- factor(metrics$Model, 
   levels = c("Nonlinear Model", "Linear Model", "GAM", "mixdistreg", "Random Forest"), 
-  labels = c("Nonlinear Model", "Linear Model", "GAM", "MoE-DR", "Random Forest")
+  labels = c("Nonlinear Model", "Linear Model", "kMeans, GAM", "MoE-DR", "sidCluster, RF")
 )
 
 metrics$Metric <- factor(metrics$Metric,
   levels = c("RMSE, Mean", "RMSE, Probability", "Frobenius Error, Covariance"), 
-  labels = c("RMSE(Mean)", "RMSE(Probability)", "Frobenius Error(Covariance)")
+  labels = c("RMSE(Mean)", "RMSE(Probability)", "FE(Covariance)")
 )
+
+# Mark RF covariance error as NA since using the residual covariance is not a reasonable comparison
+metrics$Value[metrics$Model == "sidCluster, RF" & metrics$Metric == "FE(Covariance)"]
 
 ggplot(metrics) + 
   geom_col(aes(Cluster, -log(Value), fill = Model), position = "dodge") + 
@@ -33,7 +36,7 @@ set1 <- RColorBrewer::brewer.pal(9, "Set1")
 # TODO: add gray theme
 
 base_size <- 18
-ggplot(metrics, aes(Cluster, -log(Value), color = Model)) +
+p <- ggplot(metrics, aes(Cluster, -log(Value), color = Model)) +
   geom_segment(
     aes(x = Cluster, y = 0, yend = -log(Value)),
     position = pd,

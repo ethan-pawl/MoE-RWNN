@@ -96,12 +96,12 @@ deep_model <- function(x) {
     layer_dense(
       units = 64,
       activation = "relu",
-      kernel_regularizer = regularizer_l2(1e-3)
+      kernel_regularizer = regularizer_l2(1e-4)
     ) %>%
     layer_dense(
       units = 64,
       activation = "relu",
-      kernel_regularizer = regularizer_l2(1e-3)
+      kernel_regularizer = regularizer_l2(1e-4)
     ) %>%
     layer_dense(
       units = 1,
@@ -643,4 +643,4 @@ results <- data.frame(
   Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
 )
 
-# write.csv(results, file.path("5_competitors", "50_sim", "metrics", "mixdistreg.csv"), row.names = FALSE)
+write.csv(results, file.path("5_competitors", "50_sim", "metrics", "mixdistreg.csv"), row.names = FALSE)

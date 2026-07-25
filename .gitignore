@@ -45,3 +45,5 @@ logs
 5_competitors/50_sim/507_linear/plots
 5_competitors/50_sim/metrics
 5_competitors/50_sim/metrics_plot.pdf
+5_competitors/50_sim/503_mixdistreg/check_cv.R
+corrplot.png

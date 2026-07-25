@@ -3,7 +3,7 @@ library(mgcv)
 library(dplyr)
 
 nfold <- 5
-cv_gridsize <- 30
+cv_gridsize <- 10
 blocksize <- 20
 TT <- 296
 d <- 3
@@ -131,22 +131,7 @@ for(ijob in 1:nrow(cv_jobs)) {
     return(cur_y3_gam)
   })
 
-  mn_fit <- array(NA, c(length(out_sample_inds), d, K))
-  for(j in 1:3) {
-    res <- get(paste0("y", j, "_res"))
-    for(k in 1:K) {
-      mn_fit[,j,k] <- predict(
-        res[[k]],
-        newdata = X_df[out_sample_inds,], 
-        type = "response"
-      )
-    }
-  }
-
-  resids <- mn_true[out_sample_inds,,] - mn_fit
-  resid_dotprods <- apply(resids, 3, function(x) {
-    crossprod(as.vector(t(x)))
-  })
+  
 
   cvscores[igamma,ifold] <- sum(resid_dotprods)
   print(cvscores)
