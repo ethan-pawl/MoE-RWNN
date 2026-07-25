@@ -35,6 +35,9 @@ logs
 5_competitors/50_sim/503_mixdistreg_old/cvscores
 5_competitors/50_sim/503_mixdistreg_old/plots_reg
 5_competitors/50_sim/503_mixdistreg_old/*.Rdata
+5_competitors/50_sim/503_mixdistreg_2/cvscores
+5_competitors/50_sim/503_mixdistreg_2/plots_reg
+5_competitors/50_sim/503_mixdistreg_2/*.Rdata
 5_competitors/50_sim/504_gphme/GP-HME-main
 5_competitors/50_sim/505_gadd/MixtureOfExperts-master
 5_competitors/50_sim/506_rf_wts/sidcluster-matched.Rdata

@@ -394,7 +394,6 @@ set1 <- brewer.pal(9, "Set1")
 plots_path <- file.path(
   "5_competitors", "50_sim", "503_mixdistreg", "plots_reg"
 )
-if(!dir.exists(plots_path)) dir.create(plots_path)
 
 if(plot_mean_responses) {
   means_probs_df$cluster <- paste0("Cluster ", means_probs_df$cluster, " Estimate")

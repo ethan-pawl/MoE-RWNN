@@ -71,19 +71,24 @@ load(file.path("data", "ofolds__ifolds__ifolds_inner_inds.Rdata"))
 # -> hold a different inner fold each time so I'm early stopping on a variety of different 
 #    times
 out_sample_inds <- ofolds[[ifold]]
-train_inds <- unlist(ifolds[[ifold]])
+train_inds <- unlist(ifolds[[ifold]][-ifold])
+val_inds <- ifolds[[ifold]][[ifold]]
 
 y_mat_train <- subset(data_long, Time %in% train_inds)[,1:3]
 y_mat_out <- subset(data_long, Time %in% out_sample_inds)[,1:3]
+y_mat_val <- subset(data_long, Time %in% val_inds)[,1:3]
 
 y_pca <- prcomp(y_mat_train, center = TRUE, scale = FALSE)
 y_train_pcs <- y_pca$x
 y_center <- y_pca$center 
+y_val_pcs <- predict(y_pca, newdata = y_mat_val)
 y_out_pcs <- predict(y_pca, newdata = y_mat_out)
 # No need to transform y_mat_out because I will evaluate predictive error on the y scale anyway
 
 data_long_train <- cbind(y_train_pcs, subset(data_long, Time %in% train_inds))
 colnames(data_long_train)[1:3] <- paste0("PC", 1:3)
+
+data_long_val <- subset(data_long, Time %in% val_inds)
 
 deep_model <- function(x) {
   x %>%
@@ -165,6 +170,10 @@ history <- PC1_mod %>% fit(
       patience = 10,
       restore_best_weights = TRUE
     )
+  ), 
+  validation_data = list(
+    data_long_val,
+    y_val_pcs[,1]
   )
 )
 
@@ -215,6 +224,10 @@ history_21 <- PC2_mod1 %>% fit(
       patience = 10,
       restore_best_weights = TRUE
     )
+  ), 
+  validation_data = list(
+    data_long_val,
+    y_val_pcs[,2]
   )
 )
 
@@ -241,6 +254,10 @@ history_22 <- PC2_mod2 %>% fit(
       patience = 10,
       restore_best_weights = TRUE
     )
+  ), 
+  validation_data = list(
+    data_long_val,
+    y_val_pcs[,2]
   )
 )
 
@@ -267,6 +284,10 @@ history_31 <- PC3_mod1 %>% fit(
       patience = 10,
       restore_best_weights = TRUE
     )
+  ), 
+  validation_data = list(
+    data_long_val,
+    y_val_pcs[,3]
   )
 )
 
@@ -293,6 +314,10 @@ history_32 <- PC3_mod2 %>% fit(
       patience = 10,
       restore_best_weights = TRUE
     )
+  ), 
+  validation_data = list(
+    data_long_val,
+    y_val_pcs[,3]
   )
 )
 
