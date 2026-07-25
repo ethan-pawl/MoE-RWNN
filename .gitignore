@@ -43,7 +43,11 @@ logs
 5_competitors/50_sim/506_rf_wts/sidcluster-matched.Rdata
 5_competitors/50_sim/506_rf_wts/plots
 5_competitors/50_sim/506_rf_wts/*.RDS
-5_competitors/50_sim/506_rf_wts/plots_reg 
+5_competitors/50_sim/506_rf_wts/plots_reg
+5_competitors/50_sim/506_rf_wts_old/sidcluster-matched.Rdata
+5_competitors/50_sim/506_rf_wts_old/plots
+5_competitors/50_sim/506_rf_wts_old/*.RDS
+5_competitors/50_sim/506_rf_wts_old/plots_reg  
 5_competitors/50_sim/507_linear/results
 5_competitors/50_sim/507_linear/plots
 5_competitors/50_sim/metrics

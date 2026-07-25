@@ -84,14 +84,19 @@ for(j in 1:d) {
 
 load(file.path("5_competitors", "50_sim", "500_k_means", "best_kmeans__scores-matched.Rdata"))
 
-prob <- matrix(NA, TT, K)
-for(tt in 1:TT) {
-  prob[tt,] <- best_kmeans[[tt]]$size / sum(best_kmeans[[tt]]$size)
-}
+# Empirical count proportions (OLD)
+# prob <- matrix(NA, TT, K)
+# for(tt in 1:TT) {
+#   prob[tt,] <- table(clust_res[[tt]]) / length(clust_res[[tt]])
+# }
 
-# TODO: plot clustering with means over time
-# TODO: plot mean responses over time, comparing with 
-# ground truth (use preexisting code)
+# Empirical biomass proportions
+prob <- matrix(0, length(countslist), 2)
+for(tt in 1:TT) {
+  totals <- rowsum(countslist[[tt]], clust_res[[tt]])
+  totals <- totals / sum(totals)
+  prob[tt, as.integer(rownames(totals))] <- as.numeric(totals)
+}
 
 threeD_sim_summary <- readRDS("/home/ethan/00_Cyto/MoE-RWNN/4_3dsim/results/3dsim_summary.RDS")
 

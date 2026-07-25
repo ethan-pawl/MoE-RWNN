@@ -271,18 +271,9 @@ for(k in 1:K) {
   )
 }
 
-# Empirical count proportions (OLD)
-# prob <- matrix(NA, TT, K)
-# for(tt in 1:TT) {
-#   prob[tt,] <- table(clust_res[[tt]]) / length(clust_res[[tt]])
-# }
-
-# Empirical biomass proportions
-prob <- matrix(0, length(countslist), 2)
+prob <- matrix(NA, TT, K)
 for(tt in 1:TT) {
-  totals <- rowsum(countslist[[tt]], clust_res[[tt]])
-  totals <- totals / sum(totals)
-  prob[tt, as.integer(rownames(totals))] <- as.numeric(totals)
+  prob[tt,] <- table(clust_res[[tt]]) / length(clust_res[[tt]])
 }
 
 means_probs_df <- lapply(1:TT, function(tt) {
@@ -510,4 +501,4 @@ results <- data.frame(
   Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
 )
 
-write.csv(results, file.path("5_competitors", "50_sim", "metrics", "rf_wts.csv"), row.names = FALSE)
+# write.csv(results, file.path("5_competitors", "50_sim", "metrics", "rf_wts.csv"), row.names = FALSE)
