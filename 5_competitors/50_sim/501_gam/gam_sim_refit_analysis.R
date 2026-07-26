@@ -1,11 +1,10 @@
-plot_animation <- FALSE
-plot_mean_responses <- FALSE
+plot_animation <- TRUE
+plot_mean_responses <- TRUE
 
 library(dplyr)
 library(RColorBrewer)
 library(gridExtra)
 library(ggplot2)
-# library(magick)
 library(ggrepel)
 library(gifski)
 library(tidyr)
@@ -87,20 +86,16 @@ load(file.path("5_competitors", "50_sim", "500_k_means", "best_kmeans__scores-ma
 # Empirical count proportions (OLD)
 # prob <- matrix(NA, TT, K)
 # for(tt in 1:TT) {
-#   prob[tt,] <- table(clust_res[[tt]]) / length(clust_res[[tt]])
+#   prob[tt,] <- table(best_kmeans[[tt]]$cluster) / length(best_kmeans[[tt]]$cluster)
 # }
 
 # Empirical biomass proportions
 prob <- matrix(0, length(countslist), 2)
 for(tt in 1:TT) {
-  totals <- rowsum(countslist[[tt]], clust_res[[tt]])
+  totals <- rowsum(countslist[[tt]], best_kmeans[[tt]]$cluster)
   totals <- totals / sum(totals)
   prob[tt, as.integer(rownames(totals))] <- as.numeric(totals)
 }
-
-threeD_sim_summary <- readRDS("/home/ethan/00_Cyto/MoE-RWNN/4_3dsim/results/3dsim_summary.RDS")
-
-# str(threeD_sim_summary$bestres, max.level = 1)
 
 ybin_list <- lapply(ybin_list, function(cur_y) {
   colnames(cur_y) <- paste0("y", 1:3)
@@ -309,7 +304,7 @@ rmse # [1] 0.2233791 0.2681352
 sum(rmse) # [1] 0.4915143
 
 prob_rmse <- sqrt(mean((prob1_true - prob[,2])^2))
-prob_rmse # [1] 0.305452
+prob_rmse # [1] 0.3045474
 
 # Covariance estimates would be a diagonal matrix
 cov_fit <- sapply(1:K, function(k) {
@@ -331,4 +326,4 @@ results <- data.frame(
   Value = c(rmse, sum(rmse), prob_rmse, cov_err, sum(cov_err))
 )
 
-# write.csv(results, file.path("5_competitors", "50_sim", "metrics", "gam.csv"), row.names = FALSE)
+write.csv(results, file.path("5_competitors", "50_sim", "metrics", "gam.csv"), row.names = FALSE)

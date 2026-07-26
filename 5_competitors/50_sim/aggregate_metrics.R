@@ -86,9 +86,9 @@ plist <- lapply(levels(metrics$Metric), function(cur_metric) {
       values = c(
         "Nonlinear Model" = "black", 
         "Linear Model" = set1[5], 
-        "GAM" = set1[4], 
+        "kMeans, GAM" = set1[4], 
         "MoE-DR" = set1[1], 
-        "Random Forest" = set1[2]
+        "sidCluster, RF" = set1[2]
       )
     ) + 
     labs(x = "", y = "") + 

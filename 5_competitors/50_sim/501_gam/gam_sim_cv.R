@@ -1,6 +1,7 @@
 library(parallel)
 library(mgcv)
 library(dplyr)
+library(matrixStats)
 
 nfold <- 5
 cv_gridsize <- 10
@@ -10,7 +11,7 @@ d <- 3
 K <- 2
 
 min_gamma <- 0.1
-max_gamma <- 1000
+max_gamma <- 10000
 
 # Load the data
 datobj <- readRDS(
@@ -33,7 +34,7 @@ rm(real_dataobj)
 
 # Load the clustering results
 load(file.path("5_competitors", "50_sim", "500_k_means", "best_kmeans__scores-matched.Rdata"))
-
+rea
 data_long <- lapply(seq_along(ybin_list), function(tt) {
   cur_y <- ybin_list[[tt]]
   colnames(cur_y) <- c("y1", "y2", "y3")
@@ -84,9 +85,14 @@ cv_jobs <- expand.grid(
   )
 )
 
-# TODO: insert code which loads the data and creates the data frame
+prob <- matrix(0, length(countslist), 2)
+for(tt in 1:TT) {
+  totals <- rowsum(countslist[[tt]], best_kmeans[[tt]]$cluster)
+  totals <- totals / sum(totals)
+  prob[tt, as.integer(rownames(totals))] <- as.numeric(totals)
+}
 
-# TODO: might have to slurm this
+# Cross-validate using the weighted negative log likelihood (assuming Gaussian mixture)
 cvscores <- matrix(NA, cv_gridsize, nfold)
 for(ijob in 1:nrow(cv_jobs)) {
   igamma <- cv_jobs[ijob, "igamma"]
@@ -95,46 +101,65 @@ for(ijob in 1:nrow(cv_jobs)) {
   in_sample_inds <- unlist(folds[-ifold])
   out_sample_inds <- folds[[ifold]]
 
-  y1_res <- lapply(data_long_by_clust_list, function(cur_data_long) {
+  # Set up vectorized data to easily calculate the likelihood
+  out_sample_data <- filter(data_long, Time %in% out_sample_inds)
+  n_per_tt_out <- sapply(out_sample_inds, function(tt) {
+    length(countslist[[tt]])
+  })
+  probs_long <- prob[rep(out_sample_inds, times = n_per_tt_out),]
+  counts_out <- unlist(countslist[out_sample_inds])
+  y1 <- sapply(ybin_list[out_sample_inds], function(cur_y) cur_y[,1])
+  y1 <- unlist(y1)
+  y2 <- sapply(ybin_list[out_sample_inds], function(cur_y) cur_y[,2])
+  y2 <- unlist(y2)
+  y3 <- sapply(ybin_list[out_sample_inds], function(cur_y) cur_y[,3])
+  y3 <- unlist(y3)
+
+  likelihood_contributions <- matrix(0, sum(n_per_tt_out), 2)
+  for(k in 1:length(data_long_by_clust_list)) {
+    cur_data_long <- data_long_by_clust_list[[k]]
+    cur_data_long_in <- filter(cur_data_long, Time %in% in_sample_inds)
+
     cur_y1_gam <- bam(
       y1_formula, 
-      data = filter(cur_data_long, Time %in% in_sample_inds), 
+      data = cur_data_long_in, 
       weights = Weight, 
-      select = TRUE,
+      select = TRUE, 
       gamma = gamma_grid[igamma]
     )
 
-    return(cur_y1_gam)
-  })
+    y1_preds <- predict(cur_y1_gam, newdata = out_sample_data, type = "response")
 
-  y2_res <- lapply(data_long_by_clust_list, function(cur_data_long) {
     cur_y2_gam <- bam(
       y2_formula, 
-      data = filter(cur_data_long, Time %in% in_sample_inds), 
+      data = cur_data_long_in, 
       weights = Weight, 
-      select = TRUE,
+      select = TRUE, 
       gamma = gamma_grid[igamma]
     )
 
-    return(cur_y2_gam)
-  })
-
-  y3_res <- lapply(data_long_by_clust_list, function(cur_data_long) {
+    y2_preds <- predict(cur_y2_gam, newdata = out_sample_data, type = "response")
+    
     cur_y3_gam <- bam(
       y3_formula, 
-      data = filter(cur_data_long, Time %in% in_sample_inds), 
+      data = cur_data_long_in, 
       weights = Weight, 
-      select = TRUE,
+      select = TRUE, 
       gamma = gamma_grid[igamma]
     )
 
-    return(cur_y3_gam)
-  })
+    y3_preds <- predict(cur_y3_gam, newdata = out_sample_data, type = "response")
 
-  
+    likelihood_contributions[,k] <- log(probs_long[,k]) + 
+      dnorm(y1, y1_preds, sqrt(cur_y1_gam$sig2), log = TRUE) + 
+      dnorm(y2, y2_preds, sqrt(cur_y2_gam$sig2), log = TRUE) + 
+      dnorm(y3, y3_preds, sqrt(cur_y3_gam$sig2), log = TRUE)
+  }
 
-  cvscores[igamma,ifold] <- sum(resid_dotprods)
-  print(cvscores)
+  likelihood_contributions <- rowLogSumExps(likelihood_contributions)
+  WNLL <- -sum(counts_out * likelihood_contributions)
+
+  cvscores[igamma,ifold] <- WNLL
 }
 
 saveRDS(cvscores, file = "5_competitors/50_sim/501_gam/gam_cvscores.RDS")
@@ -146,19 +171,96 @@ gamma_grid[which.min(avg_scores)]
 # TODO: refit with gamma = 1000 and see what the model is like
 # TODO: do one big cross-validation from 1000 to 0.1 and see where it levels off
 
-plot(gamma_grid, log(avg_scores))
+plot(gamma_grid, log(avg_scores - min(avg_scores) + 1))
 gamma_grid
 avg_scores
 gamma_grid[7]
 # 148.7352
 # levels out, then right after this it goes up
 
-plot(gamma_grid, log(cvscores[,1]), type = "l")
-lines(gamma_grid, log(cvscores[,2]))
-lines(gamma_grid, log(cvscores[,3]))
-lines(gamma_grid, log(cvscores[,4]))
-lines(gamma_grid, log(cvscores[,5]))
+plot(gamma_grid, log(cvscores[,1] + abs(min(cvscores)) + 1), type = "l", ylim = c(0, 16))
+lines(gamma_grid, log(cvscores[,2] + abs(min(cvscores)) + 1), ylim = c(0, 16))
+lines(gamma_grid, log(cvscores[,3] + abs(min(cvscores)) + 1), ylim = c(0, 16))
+lines(gamma_grid, log(cvscores[,4] + abs(min(cvscores)) + 1), ylim = c(0, 16))
+lines(gamma_grid, log(cvscores[,5] + abs(min(cvscores)) + 1), ylim = c(0, 16))
 
 gamma_grid[3] # [1] 529.8317
 
 # TODO: refit with this value of gamma and see how it looks
+
+# TODO: try more penalization
+new_cvscores <- numeric(nfold)
+for(ifold in 1:nfold) {
+  new_gamma <- 10000
+
+  in_sample_inds <- unlist(folds[-ifold])
+  out_sample_inds <- folds[[ifold]]
+
+  # Set up vectorized data to easily calculate the likelihood
+  out_sample_data <- filter(data_long, Time %in% out_sample_inds)
+  n_per_tt_out <- sapply(out_sample_inds, function(tt) {
+    length(countslist[[tt]])
+  })
+  probs_long <- prob[rep(out_sample_inds, times = n_per_tt_out),]
+  counts_out <- unlist(countslist[out_sample_inds])
+  y1 <- sapply(ybin_list[out_sample_inds], function(cur_y) cur_y[,1])
+  y1 <- unlist(y1)
+  y2 <- sapply(ybin_list[out_sample_inds], function(cur_y) cur_y[,2])
+  y2 <- unlist(y2)
+  y3 <- sapply(ybin_list[out_sample_inds], function(cur_y) cur_y[,3])
+  y3 <- unlist(y3)
+
+  likelihood_contributions <- matrix(0, sum(n_per_tt_out), 2)
+  for(k in 1:length(data_long_by_clust_list)) {
+    cur_data_long <- data_long_by_clust_list[[k]]
+    cur_data_long_in <- filter(cur_data_long, Time %in% in_sample_inds)
+
+    cur_y1_gam <- bam(
+      y1_formula, 
+      data = cur_data_long_in, 
+      weights = Weight, 
+      select = TRUE, 
+      gamma = new_gamma
+    )
+
+    y1_preds <- predict(cur_y1_gam, newdata = out_sample_data, type = "response")
+
+    cur_y2_gam <- bam(
+      y2_formula, 
+      data = cur_data_long_in, 
+      weights = Weight, 
+      select = TRUE, 
+      gamma = new_gamma
+    )
+
+    y2_preds <- predict(cur_y2_gam, newdata = out_sample_data, type = "response")
+    
+    cur_y3_gam <- bam(
+      y3_formula, 
+      data = cur_data_long_in, 
+      weights = Weight, 
+      select = TRUE, 
+      gamma = new_gamma
+    )
+
+    y3_preds <- predict(cur_y3_gam, newdata = out_sample_data, type = "response")
+
+    likelihood_contributions[,k] <- log(probs_long[,k]) + 
+      dnorm(y1, y1_preds, sqrt(cur_y1_gam$sig2), log = TRUE) + 
+      dnorm(y2, y2_preds, sqrt(cur_y2_gam$sig2), log = TRUE) + 
+      dnorm(y3, y3_preds, sqrt(cur_y3_gam$sig2), log = TRUE)
+  }
+
+  likelihood_contributions <- rowLogSumExps(likelihood_contributions)
+  WNLL <- -sum(counts_out * likelihood_contributions)
+
+  new_cvscores[ifold] <- WNLL
+}
+
+new_cvscores_mat <- rbind(new_cvscores, cvscores)
+
+plot(c(10000, gamma_grid), log(new_cvscores_mat[,1] + abs(min(new_cvscores_mat)) + 1), type = "l", ylim = c(0, 16))
+lines(c(10000, gamma_grid), log(new_cvscores_mat[,2] + abs(min(new_cvscores_mat)) + 1), ylim = c(0, 16))
+lines(c(10000, gamma_grid), log(new_cvscores_mat[,3] + abs(min(new_cvscores_mat)) + 1), ylim = c(0, 16))
+lines(c(10000, gamma_grid), log(new_cvscores_mat[,4] + abs(min(new_cvscores_mat)) + 1), ylim = c(0, 16))
+lines(c(10000, gamma_grid), log(new_cvscores_mat[,5] + abs(min(new_cvscores_mat)) + 1), ylim = c(0, 16))
