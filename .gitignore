@@ -55,3 +55,4 @@ logs
 5_competitors/50_sim/503_mixdistreg/check_cv.R
 corrplot.png
 5_competitors/50_sim/metrics_plot_old.pdf
+5_competitors/50_sim/metrics_plot_no_RF_cov.pdf

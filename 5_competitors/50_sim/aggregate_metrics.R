@@ -21,7 +21,8 @@ metrics$Metric <- factor(metrics$Metric,
 )
 
 # Mark RF covariance error as NA since using the residual covariance is not a reasonable comparison
-metrics$Value[metrics$Model == "sidCluster, RF" & metrics$Metric == "FE(Covariance)"]
+# TODO: 
+metrics$Value[metrics$Model == "sidCluster, RF" & metrics$Metric == "FE(Covariance)"] <- NA
 
 ggplot(metrics) + 
   geom_col(aes(Cluster, -log(Value), fill = Model), position = "dodge") + 
@@ -115,4 +116,4 @@ plist[[2]] <- plist[[2]] + labs(x = "Cluster")
 plist[[4]] <- leg
 
 gridded_plot <- gridExtra::grid.arrange(grobs = plist, ncol = 4, widths = c(1, 0.4, 1, 0.35))
-ggsave(file.path("5_competitors", "50_sim", "metrics_plot.pdf"), gridded_plot, width = 20.7, height = 7, units = "in")
+ggsave(file.path("5_competitors", "50_sim", "metrics_plot_no_RF_cov.pdf"), gridded_plot, width = 20.7, height = 7, units = "in")
