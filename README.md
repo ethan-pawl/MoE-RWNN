@@ -38,3 +38,14 @@ To reproduce the results in the paper on a high-performance computing (HPC) envi
 - `mvtnorm`
 - `remotes`
   - to install `flowmix` and `flowtrend`
+- `flowmatch`
+- `mgcv`
+- `gifski`
+- `magick`
+- `ggrepel`
+- `gganimate`
+- `patchwork`
+- `mixdistreg`
+- `deepregression`
+- `ellipse`
+- `randomForestSRC`
