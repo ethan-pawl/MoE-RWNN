@@ -20,10 +20,6 @@ metrics$Metric <- factor(metrics$Metric,
   labels = c("RMSE(Mean)", "RMSE(Probability)", "FE(Covariance)")
 )
 
-# Mark RF covariance error as NA since using the residual covariance is not a reasonable comparison
-# TODO: 
-metrics$Value[metrics$Model == "sidCluster, RF" & metrics$Metric == "FE(Covariance)"] <- NA
-
 ggplot(metrics) + 
   geom_col(aes(Cluster, -log(Value), fill = Model), position = "dodge") + 
   facet_wrap(~ Metric)
@@ -32,9 +28,6 @@ ggplot(metrics) +
 pd <- position_dodge(width = 0.9)
 
 set1 <- RColorBrewer::brewer.pal(9, "Set1")
-
-# TODO: grid.arrange this so there's no weird hole in Probability
-# TODO: add gray theme
 
 base_size <- 18
 p <- ggplot(metrics, aes(Cluster, -log(Value), color = Model)) +
