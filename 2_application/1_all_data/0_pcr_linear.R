@@ -13,17 +13,7 @@ X_dir <- file.path(
   "X_variations"
 )
 
-load_X <- function(readdir, n_PCs = "NA", n_h = "NA", seed = "NA", ofold = "NA", ifold = "NA") {
-
-  file_name <- paste("X_pc", n_PCs, "nh", n_h, "seed", seed, "ofold", ofold, "ifold", ifold, sep = "_")
-  file_name <- paste0(file_name, ".RDS")
-  file_name <- file.path(readdir, file_name)
-
-  X <- readRDS(file_name)
-  return(X)
-}
-
-X_pc <- load_X(X_dir, 9)
+X_pc <- readRDS(file.path(X_dir, "X_pc_9_nh_NA_seed_NA_ofold_NA_ifold_NA.RDS"))
 load(file.path("2_application", "21_all_data", "linear_settings.Rdata"))
 
 res <- flowmix_once(

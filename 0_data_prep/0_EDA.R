@@ -526,7 +526,7 @@ PC2_plot <- ggplot(
   labs(title = "Principal Component 2 and Covariates over Time", x = "") + 
   guides(color = guide_legend(title.position = "top"))
 
-pdf(file.path("plots", "SuppFig01.pdf"), 9.2, 5.88)
+pdf(file.path("plots", "SuppFigure01.pdf"), 9.2, 5.88)
 PC2_plot 
 graphics.off()
 
@@ -553,6 +553,6 @@ all_pc_plot <-
   ) +
   labs(title = "All Principal Components")
 
-pdf(file.path("plots", "SuppFig02.pdf"), width = 12.5, height = 11.4 * .8)
+pdf(file.path("plots", "SuppFigure02.pdf"), width = 12.5, height = 11.4 * .8)
 all_pc_plot
 graphics.off()

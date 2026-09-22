@@ -21,16 +21,9 @@ if(!dir.exists(plots_dir)) dir.create(plots_dir)
 datobj <- readRDS(file = file.path("data", "MGL1704-hourly-paper.RDS"))
 datobj %>% list2env(envir = .GlobalEnv) %>% invisible()
 
-nl_cv_file <- file.path(
-  "2_application", 
-  "21_all_data", 
-  "results", 
-  "nl_9_70_4", 
-  "nl_9_70_4_pcr_summary.RDS"
-)
-
-nl_cv <- readRDS(nl_cv_file)
-nl_best <- nl_cv$bestres
+# Load model results
+load(file.path("2_application", "21_all_data", "nl_fit.Rdata"))
+nl_best <- res
 
 load(file.path("2_application", "21_all_data", "linear_fit.Rdata"))
 linear_best <- res 
@@ -58,7 +51,7 @@ n.h <- ncol(X_nl)
 
 ##########################
 
-# Figure 4
+# Figure 5
 plot_list <- flowtrend::plot_3d(
   ylist, linear_best, 33, countslist, return_list_of_plots = TRUE, 
   labels = c(
@@ -117,7 +110,7 @@ x_lab <- text_grob("Diameter", size = 12, x = 0.515, y = 1)
 overall_title <- text_grob("Estimated Models\n2017-07-02 08:00-09:00", 
                            size = 18)
 
-pdf(file.path(plots_dir, "Figure04.pdf"), 10.5, 6)
+pdf(file.path(plots_dir, "Figure05.pdf"), 10.5, 6)
 grid.arrange(p1, p2, x_lab, overall_title, layout_matrix = matrix(c(4, 4, 
                                                                     1, 2, 
                                                                     3, 3), 
@@ -128,7 +121,7 @@ graphics.off()
 
 #######################
 
-# Figure 5 and Appendix Figures 12-14
+# Figure 6 and Appendix Figures 3-5
 lin_probs <- linear_best$prob[,clust_mat[,"Linear"]]
 nl_probs <- nl_best$prob[,clust_mat[,"Nonlinear"]]
 
@@ -177,7 +170,7 @@ names(colors) <- c("Diameter",
                    "Phycoerythrin",
                    "Relative Abundance")
 
-# Figure 5
+# Figure 6
 pro <- ggplot(filter(resp_df, Cluster  == "Pro")) + 
   geom_line(aes(Time, Prediction, linetype = Model, color = Response), 
             linewidth = 1) + 
@@ -211,14 +204,14 @@ pro_leg <- get_legend(pro) %>%
 pro <- pro + 
   theme(legend.position = "none")
 
-pdf(file.path(plots_dir, "Figure05.pdf"), 17.7, 8.6)
+pdf(file.path(plots_dir, "Figure06.pdf"), 17.7, 8.6)
 grid.arrange(pro, pro_leg, nullGrob(), 
              layout_matrix = matrix(c(1, 1, 1, 
                                       3, 2, 3), byrow = TRUE, nrow = 2), 
              widths = c(0.28, 1, 0.11), heights = c(1, 0.2))
 graphics.off()
 
-# Appendix Figure 12
+# Appendix Figure 3
 syn <- ggplot(filter(resp_df, Cluster  == "Syn")) + 
   geom_line(aes(Time, Prediction, linetype = Model, color = Response), 
             linewidth = 1) + 
@@ -252,14 +245,14 @@ syn_leg <- get_legend(syn) %>%
 syn <- syn + 
   theme(legend.position = "none")
 
-pdf(file.path(plots_dir, "Figure12.pdf"), 17.7, 8.6)
+pdf(file.path(plots_dir, "SuppFigure03.pdf"), 17.7, 8.6)
 grid.arrange(syn, syn_leg, nullGrob(), 
              layout_matrix = matrix(c(1, 1, 1, 
                                       3, 2, 3), byrow = TRUE, nrow = 2), 
              widths = c(0.28, 1, 0.11), heights = c(1, 0.2))
 graphics.off()
 
-# Appendix Figure 13
+# Appendix Figure 4
 pico1 <- ggplot(filter(resp_df, Cluster  == "Pico1")) + 
   geom_line(aes(Time, Prediction, linetype = Model, color = Response), 
             linewidth = 1) + 
@@ -293,14 +286,14 @@ pico1_leg <- get_legend(pico1) %>%
 pico1 <- pico1 + 
   theme(legend.position = "none")
 
-pdf(file.path(plots_dir, "Figure13.pdf"), 17.7, 8.6)
+pdf(file.path(plots_dir, "SuppFigure04.pdf"), 17.7, 8.6)
 grid.arrange(pico1, pico1_leg, nullGrob(), 
              layout_matrix = matrix(c(1, 1, 1, 
                                       3, 2, 3), byrow = TRUE, nrow = 2), 
              widths = c(0.28, 1, 0.11), heights = c(1, 0.2))
 graphics.off()
 
-# Appendix Figure 14
+# Appendix Figure 5
 pico2 <- ggplot(filter(resp_df, Cluster  == "Pico2")) + 
   geom_line(aes(Time, Prediction, linetype = Model, color = Response), 
             linewidth = 1) + 
@@ -334,7 +327,7 @@ pico2_leg <- get_legend(pico2) %>%
 pico2 <- pico2 + 
   theme(legend.position = "none")
 
-pdf(file.path(plots_dir, "Figure14.pdf"), 17.7, 8.6)
+pdf(file.path(plots_dir, "SuppFigure05.pdf"), 17.7, 8.6)
 grid.arrange(pico2, pico2_leg, nullGrob(), 
              layout_matrix = matrix(c(1, 1, 1, 
                                       3, 2, 3), byrow = TRUE, nrow = 2), 
@@ -343,7 +336,7 @@ graphics.off()
 
 ##################################
 
-# Figures 6 and 7, and Appendix Figures 8 & 9
+# Figures 7 and 8, and Appendix Figures 6 & 7
 
 # Create fine grids of X values
 PC1_seq <- seq(min(X_pc[,1]), max(X_pc[,1]), length.out = 30)
@@ -440,7 +433,7 @@ PC1_pred_melt$Response <- factor(PC1_pred_melt$Response,
 # Plotting a sign flip of PC1 since it fits intuition better 
 # (positive correlation with latitude)
 
-# Appendix Figure 8
+# Appendix Figure 6
 PC1_plot <- ggplot(PC1_pred_melt) + 
   geom_line(aes(x = PC1, y = Prediction, linetype = Model, color = Model), linewidth = 1) + 
   scale_linetype_manual(values = c("Linear" = "dotdash", "Nonlinear" = "solid")) + 
@@ -456,7 +449,7 @@ PC1_plot <- ggplot(PC1_pred_melt) +
   labs(title = "Expected Cluster Means and Probabilities Conditional on Principal Component 1", 
        x = "PC1 (Proxy for Latitude)")
 
-pdf(file.path(plots_dir, "Figure08.pdf"), 13.2, 11.7)
+pdf(file.path(plots_dir, "SuppFigure06.pdf"), 13.2, 11.7)
 PC1_plot
 graphics.off()
 
@@ -474,7 +467,7 @@ PC1_ice_list <- lapply(c("Pro", "Syn", "Pico1", "Pico2"), function(pop) {
   })
 }) %>% unlist(recursive = FALSE) 
 
-# Figure 6
+# Figure 7
 xaxis_labs <- paste0(c("-8\n23.7",
                        "-4\n32.4", 
                        "0\n34.2", 
@@ -526,7 +519,7 @@ pro_diam <- PC1_ice_list[[2]] +
 x_lab <- text_grob("PC1 (Proxy for Latitude)", size = 18, 
                    hjust = 0.375, vjust = -0.5)
 
-pdf(file.path(plots_dir, "Figure06.pdf"), 18.3, 5.6)
+pdf(file.path(plots_dir, "Figure07.pdf"), 18.3, 5.6)
 grid.arrange(pro_diam, syn_pe, pico2_prob, leg, x_lab, nrow = 2, 
             layout_matrix = matrix(c(1, 2, 3, 4, 
                                      NA, 5, NA, NA), 2, byrow = TRUE), 
@@ -639,18 +632,18 @@ plot_ice <- function(PC_lin_ice, PC_nl_ice, PC_num, PC_seq, return_plot_list = F
   }
 }
 
-# Figure 7 and Appendix Figure 9
+# Figure 8 and Appendix Figure 7
 PC2_plot <- plot_ice(PC2_lin_ice, PC2_nl_ice, "PC2", PC2_seq)
 
-# Appendix Figure 9
-pdf(file.path(plots_dir, "Figure09.pdf"), 12.5, 11.4)
+# Appendix Figure 7
+pdf(file.path(plots_dir, "SuppFigure07.pdf"), 12.5, 11.4)
 PC2_plot
 graphics.off()
 
 # List of plots
 PC2_plist <- plot_ice(PC2_lin_ice, PC2_nl_ice, "PC2", PC2_seq, return_plot_list = TRUE)
 
-# Figure 7
+# Figure 8
 pro_prob <- PC2_plist[[1]] + 
   labs(x = "", title = expression(italic("Prochlorococcus"))) + 
   theme(legend.title = element_text(size = 22, margin = margin(b = 10), 
@@ -750,7 +743,7 @@ cruise_map_leg <- get_legend(cruise_map) %>%
 cruise_map <- cruise_map + 
   theme(legend.position = "none")
 
-pdf(file.path(plots_dir, "Figure07.pdf"), 17.5, 10.6)
+pdf(file.path(plots_dir, "Figure08.pdf"), 17.5, 10.6)
 grid.arrange(pro_prob, syn_pe, pro_chl, PC2_leg, PC2_xlab, 
              nullGrob(), cruise_map, cruise_map_leg,
              layout_matrix = matrix(c(1, 2, 3, 4,
