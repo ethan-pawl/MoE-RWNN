@@ -169,7 +169,7 @@ nl_plot <- plot_1d(ybin_list, countslist, nl_fit, bin = TRUE) +
 
 x_lab <- text_grob("Time (t)", size = 18, x = 0.53, y = 0.9)
 
-pdf(file.path("plots", "Figure02.pdf"), 14.6, 8.5)
+pdf(file.path("plots", "Figure03.pdf"), 14.6, 8.5)
 grid.arrange(
   lin_plot, nl_plot, x_lab, leg, nullGrob(), 
   layout_matrix = matrix(

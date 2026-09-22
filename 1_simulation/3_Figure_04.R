@@ -110,7 +110,7 @@ layout_mat <- matrix(c(12, 10, 10, 10,
                        8, 5, 6, 7, 
                        9, 9, 9, 9), ncol = 4, byrow = TRUE)
 
-pdf(file.path("plots", "Figure_04.pdf"), 16, 7.9)
+pdf(file.path("plots", "Figure04.pdf"), 16, 7.9)
 grid.arrange(grobs = p_list, layout_matrix = layout_mat, 
              heights = c(0.25, 0.89, 1.11, 0.1, 0.05, 1.11, 0.89, 0.15), 
              widths = c(1.05, 1, 1, 1))
