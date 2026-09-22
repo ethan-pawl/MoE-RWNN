@@ -1,9 +1,12 @@
 data/*.Rdata
 plots/*
 data/X_variations
-1_simulation/simdata
 1_simulation/aux_simdata
 1_simulation/results
+1_simulation/simdata
+1_simulation/best_fit_finder.R
+1_simulation/best_fit_finder.slurm
+1_simulation/best_fit_aggregator.R
 2_application/20_nested_cv/results
 2_application/21_all_data/results
 2_application/22_wts/results
@@ -11,7 +14,6 @@ data/X_variations
 3_seedsim/results
 4_3dsim/results
 4_3dsim/3dsimdata
-logs
 5_competitors/bg_papers
 5_competitors/50_sim/500_k_means/plots
 5_competitors/50_sim/500_k_means/*.Rdata
@@ -53,6 +55,6 @@ logs
 5_competitors/50_sim/metrics
 5_competitors/50_sim/metrics_plot.pdf
 5_competitors/50_sim/503_mixdistreg/check_cv.R
-corrplot.png
 5_competitors/50_sim/metrics_plot_old.pdf
 5_competitors/50_sim/metrics_plot_no_RF_cov.pdf
+todo.md
