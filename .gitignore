@@ -8,7 +8,6 @@ data/X_variations
 2_application/1_all_data/linear_fit.Rdata
 2_application/22_wts/results
 2_application/23_PCs/results
-3_seedsim/results
 4_3dsim/3dsimdata
 5_competitors/bg_papers
 5_competitors/50_sim/500_k_means/plots
